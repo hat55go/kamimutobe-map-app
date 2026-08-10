@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上六人部マップ</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b4332">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="sidebar">
+    <header id="sidebar-header">
+      <h1>上六人部マップ</h1>
+      <p class="subtitle">「＋ピン」ボタン → 地図クリックで追加</p>
+      <button id="sidebar-toggle" title="サイドバーを格納">◀</button>
+    </header>
+
+    <nav id="tabs">
+      <button class="tab active" data-tab="notes">📖 記録 <span id="notes-count" class="count"></span></button>
+      <button class="tab" data-tab="spots">📍 場所図鑑 <span id="spots-count" class="count"></span></button>
+    </nav>
+
+    <div id="search-row">
+      <input id="search" type="search" placeholder="検索（タイトル・人・本文）">
+    </div>
+    <div id="filter-chips"></div>
+
+    <ul id="item-list"></ul>
+  </aside>
+
+  <main id="map"></main>
+
+  <button id="sidebar-open" title="サイドバーを開く">📖 ▶</button>
+  <div id="move-hint" class="hidden">📍 移動先を地図でクリックしてください（Escで中止）</div>
+  <div id="offline-banner" class="hidden"></div>
+
+  <!-- 初回セットアップ（保存先リポジトリとトークン） -->
+  <div id="setup-backdrop" class="hidden">
+    <form id="setup-form">
+      <h2>保存先の設定</h2>
+      <p class="setup-lead">記録は GitHub のプライベートリポジトリに保存されます。最初に一度だけ設定してください。</p>
+
+      <label>リポジトリ所有者
+        <input name="owner" value="hat55go" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      </label>
+      <label>リポジトリ名
+        <input name="repo" value="kamimutobe-map" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      </label>
+      <label>アクセストークン
+        <input name="token" type="password" autocomplete="off" placeholder="github_pat_..." required>
+      </label>
+
+      <details class="setup-help">
+        <summary>トークンの作り方</summary>
+        <ol>
+          <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開く</li>
+          <li>Token name: 任意（例: kamimutobe-map）</li>
+          <li>Expiration: 好みの期限（1年など）</li>
+          <li>Repository access: <b>Only select repositories</b> → <b>kamimutobe-map</b> を選択</li>
+          <li>Permissions → Repository permissions → <b>Contents</b> を <b>Read and write</b> に</li>
+          <li>Generate token → 表示された文字列をコピーして上に貼り付け</li>
+        </ol>
+        <p>トークンはこの端末の中だけに保存され、どこにも送信されません（GitHub 以外）。</p>
+      </details>
+
+      <p id="setup-status"></p>
+      <div class="form-buttons">
+        <button type="button" id="setup-clear">保存済みを消す</button>
+        <button type="submit" id="setup-save">接続してはじめる</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 追加・編集フォーム（モーダル） -->
+  <div id="modal-backdrop" class="hidden">
+    <form id="item-form">
+      <h2 id="form-title">記録を追加</h2>
+      <label>タイトル <span class="req">必須</span>
+        <input name="title" required autocomplete="off">
+      </label>
+      <label id="date-field">日付
+        <input name="date" type="date">
+      </label>
+      <label>カテゴリ
+        <select name="category"></select>
+      </label>
+      <label id="people-field">会った人（カンマ区切り）
+        <input name="people" placeholder="例: 田中さん, 佐藤さん" autocomplete="off">
+      </label>
+      <label>メモ
+        <textarea name="text" rows="4"></textarea>
+      </label>
+      <label>写真（複数可・ローカル保存）
+        <input name="photos" type="file" accept="image/*" multiple>
+      </label>
+      <div id="photo-previews"></div>
+      <label>出典・提供
+        <input name="source" placeholder="例: ○○さん提供（Facebook投稿より）" autocomplete="off">
+      </label>
+      <div class="form-buttons">
+        <button type="button" id="form-cancel">キャンセル</button>
+        <button type="submit" id="form-save">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="storage.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

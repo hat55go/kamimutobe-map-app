@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+node_modules/
+*.log
+# 記録データはこのリポジトリに置かない（プライベートリポジトリ側で管理）
+data/
