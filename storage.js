@@ -63,7 +63,11 @@ function bytesToBase64(bytes) {
 // ---- GitHub API ----
 async function gh(path, options = {}) {
   const { token, owner, repo } = store.config;
-  const res = await fetch(`${API}/repos/${owner}/${repo}/${path}`, {
+  // リポジトリ直下の接続テストでは末尾の `/` を付けない。
+  // GitHub API は末尾 `/` 付きURLへのCORS preflightを404にするため、
+  // ブラウザでは認証結果を受け取る前に `Failed to fetch` になる。
+  const repoUrl = `${API}/repos/${owner}/${repo}`;
+  const res = await fetch(path ? `${repoUrl}/${path}` : repoUrl, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
