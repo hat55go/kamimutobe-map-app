@@ -1,12 +1,12 @@
 // アプリ本体をキャッシュして、圏外・機内モードでも起動できるようにする。
 // 記録データは localStorage 側のキャッシュを app.js が使うので、ここでは扱わない。
-const CACHE = 'kamimutobe-map-v2';
+const CACHE = 'kamimutobe-map-v3';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
-  './app.js',
-  './storage.js',
+  './app.js?v=3',
+  './storage.js?v=3',
   './area.geojson',
   './manifest.json',
   './icon-192.png',
@@ -44,16 +44,13 @@ self.addEventListener('fetch', (e) => {
   // 地図タイルはブラウザ標準のキャッシュに任せる（量が多くストレージを圧迫するため）
   if (url.hostname.includes('cyberjapandata.gsi.go.jp') || url.hostname.includes('amazonaws.com')) return;
 
-  // アプリ本体はキャッシュ優先（オフラインでも起動できる）＋裏で更新
+  // アプリ本体はネットワーク優先。更新を即時反映しつつ、圏外時だけキャッシュへ戻す。
   e.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(request, res.clone()));
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    }),
+    fetch(request)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE).then((c) => c.put(request, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(request)),
   );
 });
