@@ -195,6 +195,15 @@ async function uploadPhoto(blob, name) {
 }
 
 // ---- 接続テスト ----
+async function probeGitHubApi() {
+  try {
+    const res = await fetch(`${API}/rate_limit`, { cache: 'no-store' });
+    return `GitHub API疎通: HTTP ${res.status}`;
+  } catch (err) {
+    return `GitHub API疎通も失敗: ${err.message}`;
+  }
+}
+
 async function testConnection(cfg) {
   const prev = store.config;
   store.config = cfg;
@@ -205,6 +214,12 @@ async function testConnection(cfg) {
     return { ok: true, repo: info.full_name, private: info.private };
   } catch (err) {
     store.config = prev;
+    if (err instanceof TypeError && err.message === 'Failed to fetch') {
+      const probe = await probeGitHubApi();
+      const detail = new Error(`${err.message}（${probe}）`);
+      detail.status = err.status;
+      throw detail;
+    }
     throw err;
   }
 }
