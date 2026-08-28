@@ -19,8 +19,12 @@ python3 -m http.server 3142   # → http://localhost:3142
 - `index.html` — 画面全体（地図・サイドバー・フォーム・セットアップ）
 - `app.js` — UI とロジック。`api()` が旧サーバ API 互換の窓口
 - `storage.js` — GitHub 読み書き層（トークン管理・base64・sha競合処理・写真）
+- `record-merge.js` — 別端末との同時編集を安全に合流し、競合時は上書きを止める
+- `image-utils.js` — HEIC/HEIFを含む写真の変換・縮小
+- `vendor/heic2any.min.js` — HEIC変換用の同梱ライブラリ（MIT）
 - `sw.js` — アプリ本体のキャッシュ
 - `area.geojson` — 上六人部の外周＋9大字の境界
+- `tests/` — Node標準テストによる競合・入力判定の回帰テスト
 
 ## Conventions
 - コミット: Conventional Commits（英語）
