@@ -311,6 +311,15 @@ body {
   font-family: inherit;
 }
 
+.form-help {
+  margin: -5px 0 10px;
+  color: #6c757d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.form-help.ng { color: #c92a2a; }
+
 #photo-previews { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 10px; }
 
 .photo-thumb { position: relative; }

@@ -142,7 +142,10 @@ async function loadCollection(kind) {
     return { items, fromCache: false };
   } catch (err) {
     const cached = readCache()[kind];
-    if (cached) {
+    // 認証切れ・権限不足・保存先間違いを「オフライン」と偽装しない。
+    // 本当に通信できない場合だけ、最後に取得できたキャッシュで閲覧を続ける。
+    const networkUnavailable = !navigator.onLine || err instanceof TypeError;
+    if (cached && networkUnavailable) {
       store.online = false;
       return { items: cached, fromCache: true };
     }
@@ -155,13 +158,17 @@ async function saveCollection(kind, items, message) {
   try {
     await writeFile(path, utf8ToBase64(JSON.stringify(items, null, 2) + '\n'), message);
   } catch (err) {
-    // 別端末が先に更新していた場合は sha を取り直して 1 度だけやり直す
+    // 同じファイルが直前に別端末で更新された場合、古い items を自動再送すると
+    // 新しい内容を丸ごと消してしまう。保存を止め、次回の読み直しに委ねる。
     if (err.status === 409 || err.status === 422) {
-      await readFile(path);
-      await writeFile(path, utf8ToBase64(JSON.stringify(items, null, 2) + '\n'), message);
-    } else {
-      throw err;
+      const conflict = new Error(
+        '保存直前に別の端末から更新されました。既存内容を守るため保存を中止しました。' +
+        '画面を読み込み直して、もう一度お試しください。',
+      );
+      conflict.code = 'WRITE_CONFLICT';
+      throw conflict;
     }
+    throw err;
   }
   writeCache(kind, items);
 }

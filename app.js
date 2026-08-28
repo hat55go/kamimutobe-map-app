@@ -62,27 +62,10 @@ function resolvePhotos(root) {
   });
 }
 
-// iPhone の HEIC やサイズの大きい写真をそのまま送るとリポジトリが重くなるため、
-// ブラウザ側で長辺 2400px の JPEG に変換してから保存する。
-async function compressImage(file) {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
-  if (!blob) throw new Error('画像を変換できませんでした');
-  return blob;
-}
-
 // 旧サーバ API と同じ呼び出し方のまま、中身を GitHub への読み書きに差し替えている。
 // 書き込みは毎回リポジトリの最新を読んでから更新するので、他端末の変更を踏み潰さない。
-async function api(path, method = 'GET', body) {
-  const m = path.match(/^\/api\/(notes|spots)(?:\/([\w]+))?$/);
-  if (!m) throw new Error(`不正なパス: ${path}`);
-  const [, kind, id] = m;
+async function api(path, method = 'GET', body, baseItem = null) {
+  const { kind, id } = kmapRecordMerge.parseApiPath(path);
   const label = kind === 'notes' ? '記録' : '場所';
 
   if (method === 'GET') {
@@ -95,7 +78,10 @@ async function api(path, method = 'GET', body) {
   if (fromCache) throw new Error('オフラインのため保存できません（電波が戻ってからもう一度）');
 
   if (method === 'POST') {
-    const item = { ...body, id: genId(), createdAt: new Date().toISOString() };
+    const itemId = body.id || genId();
+    const alreadySaved = items.find((it) => it.id === itemId);
+    if (alreadySaved) return alreadySaved; // 応答だけ途切れた後の再保存でも重複させない
+    const item = { ...body, id: itemId, createdAt: new Date().toISOString() };
     items.push(item);
     await kmapStorage.saveCollection(kind, items, `${kind}: add ${item.title}`);
     return item;
@@ -105,13 +91,14 @@ async function api(path, method = 'GET', body) {
   if (index === -1) throw new Error(`${label}が見つかりません`);
 
   if (method === 'PUT') {
-    const merged = { ...items[index], ...body, id };
+    const merged = kmapRecordMerge.mergeItem(baseItem, items[index], body);
     items[index] = merged;
     await kmapStorage.saveCollection(kind, items, `${kind}: update ${merged.title}`);
     return merged;
   }
 
   if (method === 'DELETE') {
+    kmapRecordMerge.assertSafeDelete(baseItem, items[index]);
     const [removed] = items.splice(index, 1);
     await kmapStorage.saveCollection(kind, items, `${kind}: delete ${removed.title}`);
     return removed;
@@ -384,9 +371,13 @@ function openDetail(kind, item) {
   };
   div.querySelector('[data-act="delete"]').onclick = async () => {
     if (!confirm(`「${item.title}」を削除しますか？`)) return;
-    await api(`/api/${kind}/${item.id}`, 'DELETE');
-    activePopup.remove();
-    await loadAll();
+    try {
+      await api(`/api/${kind}/${item.id}`, 'DELETE', null, item);
+      activePopup.remove();
+      await loadAll();
+    } catch (err) {
+      alert(`削除できませんでした: ${err.message}`);
+    }
   };
   activePopup = new maplibregl.Popup({ offset: 18, maxWidth: '300px' })
     .setLngLat([item.lng, item.lat])
@@ -441,8 +432,12 @@ map.on('click', async (e) => {
   if (moveTarget) {
     const { kind, item } = moveTarget;
     cancelMode();
-    await api(`/api/${kind}/${item.id}`, 'PUT', { lat: e.lngLat.lat, lng: e.lngLat.lng });
-    await loadAll();
+    try {
+      await api(`/api/${kind}/${item.id}`, 'PUT', { lat: e.lngLat.lat, lng: e.lngLat.lng }, item);
+      await loadAll();
+    } catch (err) {
+      alert(`移動できませんでした: ${err.message}`);
+    }
     return;
   }
   if (!addMode) {
@@ -474,6 +469,17 @@ const backdrop = document.getElementById('modal-backdrop');
 const form = document.getElementById('item-form');
 let formContext = null; // { kind, latlng, existing }
 let keepPhotos = []; // 編集中に保持する既存写真
+let pendingPhotoUploads = new Map(); // 保存再試行時に同じ写真を重複アップロードしない
+
+function fileKey(file, index) {
+  return [file.name, file.size, file.lastModified, index].join(':');
+}
+
+function setPhotoStatus(message, isError = false) {
+  const el = document.getElementById('photo-status');
+  el.textContent = message;
+  el.classList.toggle('ng', isError);
+}
 
 function renderPhotoPreviews() {
   const wrap = document.getElementById('photo-previews');
@@ -489,7 +495,7 @@ function renderPhotoPreviews() {
 }
 
 function openForm(kind, latlng, existing = null) {
-  formContext = { kind, latlng, existing };
+  formContext = { kind, latlng, existing, draftId: existing ? null : genId() };
   document.getElementById('form-title').textContent =
     `${KIND_LABEL[kind]}を${existing ? '編集' : '追加'}`;
 
@@ -509,6 +515,8 @@ function openForm(kind, latlng, existing = null) {
   form.elements.source.value = existing?.source || '';
   form.elements.photos.value = '';
   keepPhotos = existing?.photos ? [...existing.photos] : [];
+  pendingPhotoUploads = new Map();
+  setPhotoStatus('iPhoneのHEIC写真にも対応しています。');
   renderPhotoPreviews();
 
   backdrop.classList.remove('hidden');
@@ -516,6 +524,9 @@ function openForm(kind, latlng, existing = null) {
 }
 
 function closeForm() {
+  if (pendingPhotoUploads.size && !confirm(
+    '写真は保存先へアップロード済みですが、記録への反映が完了していません。編集を閉じますか？',
+  )) return;
   backdrop.classList.add('hidden');
   formContext = null;
 }
@@ -525,7 +536,7 @@ backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeForm
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const { kind, latlng, existing } = formContext;
+  const { kind, latlng, existing, draftId } = formContext;
   const body = {
     title: form.elements.title.value.trim(),
     category: form.elements.category.value,
@@ -533,6 +544,7 @@ form.addEventListener('submit', async (e) => {
     lat: latlng.lat,
     lng: latlng.lng,
   };
+  if (!existing) body.id = draftId;
   if (kind === 'notes') {
     body.date = form.elements.date.value || today();
     body.people = form.elements.people.value
@@ -543,20 +555,33 @@ form.addEventListener('submit', async (e) => {
   saveBtn.disabled = true;
   try {
     const files = [...form.elements.photos.files];
-    const uploaded = [];
     for (const [i, f] of files.entries()) {
+      const key = fileKey(f, i);
+      if (pendingPhotoUploads.has(key)) continue;
       saveBtn.textContent = `写真を保存中 ${i + 1}/${files.length}`;
-      const blob = await compressImage(f);
-      uploaded.push(await kmapStorage.uploadPhoto(blob, `${genId()}.jpg`));
+      setPhotoStatus(`「${f.name}」を変換・保存しています…`);
+      const blob = await kmapImages.compressImage(f);
+      const uploadedName = await kmapStorage.uploadPhoto(blob, `${genId()}.jpg`);
+      pendingPhotoUploads.set(key, uploadedName);
     }
+    if (files.length) form.elements.photos.value = '';
     saveBtn.textContent = '保存中…';
+    const uploaded = [...pendingPhotoUploads.values()];
     body.photos = [...keepPhotos, ...uploaded];
     body.source = form.elements.source.value.trim();
-    if (existing) await api(`/api/${kind}/${existing.id}`, 'PUT', body);
+    if (uploaded.length) setPhotoStatus('写真は保存済みです。記録へ反映しています…');
+    if (existing) await api(`/api/${kind}/${existing.id}`, 'PUT', body, existing);
     else await api(`/api/${kind}`, 'POST', body);
+    pendingPhotoUploads.clear();
     closeForm();
     await loadAll();
   } catch (err) {
+    setPhotoStatus(
+      pendingPhotoUploads.size
+        ? '写真は保存済みですが、記録への反映は未完了です。内容を確認して、もう一度「保存」を押してください。'
+        : err.message,
+      true,
+    );
     alert(`保存できませんでした: ${err.message}`);
   } finally {
     saveBtn.disabled = false;
@@ -762,7 +787,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=4').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=5').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 

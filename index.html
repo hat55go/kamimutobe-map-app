@@ -95,9 +95,10 @@
       <label>メモ
         <textarea name="text" rows="4"></textarea>
       </label>
-      <label>写真（複数可・ローカル保存）
-        <input name="photos" type="file" accept="image/*" multiple>
+      <label>写真（複数可・GitHubの非公開保存先へ保存）
+        <input name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple>
       </label>
+      <p id="photo-status" class="form-help" aria-live="polite">iPhoneのHEIC写真にも対応しています。</p>
       <div id="photo-previews"></div>
       <label>出典・提供
         <input name="source" placeholder="例: ○○さん提供（Facebook投稿より）" autocomplete="off">
@@ -110,7 +111,9 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="storage.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="record-merge.js?v=5"></script>
+  <script src="image-utils.js?v=5"></script>
+  <script src="storage.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

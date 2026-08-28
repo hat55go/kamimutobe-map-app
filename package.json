@@ -1,0 +1,8 @@
+{
+  "name": "kamimutobe-map-app",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check app.js && node --check storage.js && node --check image-utils.js && node --check record-merge.js && node --check sw.js"
+  }
+}
