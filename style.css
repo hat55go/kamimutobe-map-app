@@ -189,7 +189,8 @@ body {
 #map { flex: 1; height: 100%; }
 
 .marker {
-  position: relative;
+  /* MapLibreの座標変換を正しく受けるため、通常レイアウトには参加させない。 */
+  position: absolute;
   width: 34px;
   height: 34px;
   border: 0;

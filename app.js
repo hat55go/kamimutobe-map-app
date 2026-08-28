@@ -482,7 +482,11 @@ function renderMarkers() {
         e.stopPropagation(); // 地図クリック（追加メニュー）を発火させない
         openDetail(kind, item);
       });
-      const mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      const mk = new maplibregl.Marker({
+        element: el,
+        anchor: 'bottom',
+        subpixelPositioning: true,
+      })
         .setLngLat([item.lng, item.lat])
         .addTo(map);
       state.markers.push(mk);
@@ -1015,7 +1019,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=7').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=8').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
