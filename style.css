@@ -189,30 +189,32 @@ body {
 #map { flex: 1; height: 100%; }
 
 .marker {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: 50% 50% 50% 8px;
-  transform: rotate(-45deg);
-  border: 2px solid rgba(255, 255, 255, 0.96);
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  font-size: 17px;
+  font-size: 28px;
   line-height: 1;
+  transform: none;
 }
-
-.marker-memo { background: #fff4e6; }
-.marker-shop { background: #f8f0fc; }
-.marker-facility { background: #e7f5ff; }
-.marker-nature { background: #ebfbee; }
 
 .marker-memo::before { content: '📍'; }
 .marker-shop::before { content: '🛖'; }
 .marker-facility::before { content: '🏤'; }
+.marker-shrine::before { content: '⛩️'; }
 .marker-nature::before { content: '❇️'; }
-.marker::before { display: inline-block; transform: rotate(45deg); }
+.marker::before {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: block;
+  transform: translateX(-50%);
+}
 
 .shelter-marker {
   width: 30px;

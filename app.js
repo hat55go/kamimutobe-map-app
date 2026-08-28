@@ -12,6 +12,7 @@ const DEMO_DATA = {
   spots: [
     { id: 'demo-shop', title: '地域のお店', category: 'お店', text: 'お店の記録例', lat: 35.254, lng: 135.212 },
     { id: 'demo-facility', title: '地域交流館', category: '施設', text: '公共施設の記録例', lat: 35.250, lng: 135.208 },
+    { id: 'demo-shrine', title: '地域の神社', category: '神社仏閣', text: '寺社仏閣の記録例', lat: 35.251, lng: 135.214 },
     { id: 'demo-nature', title: '自然観察スポット', category: '自然', text: '自然スポットの記録例', lat: 35.248, lng: 135.202 },
     { id: 'demo-hidden', title: '非表示のテストピン', category: 'その他', text: '復元確認用', lat: 35.251, lng: 135.210, archivedAt: '2026-08-28T00:00:00.000Z' },
   ],
@@ -1014,7 +1015,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=7').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
