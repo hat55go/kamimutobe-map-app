@@ -17,6 +17,7 @@
     <header id="sidebar-header">
       <h1>上六人部マップ</h1>
       <p class="subtitle">「＋ピン」ボタン → 地図クリックで追加</p>
+      <button id="trash-open" title="非表示にしたピンを確認">🗑</button>
       <button id="sidebar-toggle" title="サイドバーを格納">◀</button>
     </header>
 
@@ -38,6 +39,32 @@
   <button id="sidebar-open" title="サイドバーを開く">📖 ▶</button>
   <div id="move-hint" class="hidden">📍 移動先を地図でクリックしてください（Escで中止）</div>
   <div id="offline-banner" class="hidden"></div>
+
+  <!-- 防災レイヤー -->
+  <section id="hazard-panel" class="floating-panel hidden" aria-label="防災レイヤー">
+    <div class="floating-panel-head">
+      <h2>防災マップ</h2>
+      <button type="button" id="hazard-close" aria-label="閉じる">×</button>
+    </div>
+    <label><input type="checkbox" data-hazard="flood"> 洪水浸水想定区域</label>
+    <label><input type="checkbox" data-hazard="sediment"> 土砂災害警戒区域</label>
+    <label><input type="checkbox" data-hazard="shelter"> 指定緊急避難場所</label>
+    <a class="hazard-doc-link" href="https://www.city.fukuchiyama.lg.jp/site/hazardmap/62756.html" target="_blank" rel="noopener">三峠断層など福知山市の公式資料を確認</a>
+    <p class="hazard-note">現在地は地図上の照準ボタンで確認できます。避難所の「経路候補」は、道路の被害や規制を保証しません。実際の避難指示を優先してください。</p>
+    <p class="hazard-source"><a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">出典・詳細：ハザードマップポータルサイト</a></p>
+  </section>
+
+  <!-- 非表示ピン（復元可能） -->
+  <div id="trash-backdrop" class="hidden">
+    <section id="trash-panel" role="dialog" aria-modal="true" aria-labelledby="trash-title">
+      <div class="floating-panel-head">
+        <h2 id="trash-title">非表示にしたピン</h2>
+        <button type="button" id="trash-close" aria-label="閉じる">×</button>
+      </div>
+      <p class="trash-lead">記録や写真は削除されていません。いつでも地図へ戻せます。</p>
+      <ul id="trash-list"></ul>
+    </section>
+  </div>
 
   <!-- 初回セットアップ（保存先リポジトリとトークン） -->
   <div id="setup-backdrop" class="hidden">
@@ -111,9 +138,10 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="record-merge.js?v=5"></script>
-  <script src="image-utils.js?v=5"></script>
-  <script src="storage.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="record-merge.js?v=6"></script>
+  <script src="pin-types.js?v=6"></script>
+  <script src="image-utils.js?v=6"></script>
+  <script src="storage.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

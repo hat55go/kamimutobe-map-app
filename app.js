@@ -2,23 +2,20 @@
 
 // ---- 定数 ----
 const CENTER = [135.207, 35.250]; // 上六人部（土師川中流域）の中心付近
-const CATEGORIES = {
-  notes: {
-    '出会った人': '#e8590c',
-    '出来事': '#f08c00',
-    '気づき': '#2f9e44',
-    'その他': '#868e96',
-  },
-  spots: {
-    '集落': '#1971c2',
-    '施設': '#6741d9',
-    '神社仏閣': '#9c36b5',
-    'お店': '#c2255c',
-    '自然': '#099268',
-    'その他': '#495057',
-  },
-};
 const KIND_LABEL = { notes: '記録', spots: '場所' };
+const DEMO_MODE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  && new URLSearchParams(location.search).has('demo');
+const DEMO_DATA = {
+  notes: [
+    { id: 'demo-note', title: '川沿いの観察メモ', category: '気づき', date: '2026-08-28', text: '現地で気づいたことを記録', lat: 35.252, lng: 135.205 },
+  ],
+  spots: [
+    { id: 'demo-shop', title: '地域のお店', category: 'お店', text: 'お店の記録例', lat: 35.254, lng: 135.212 },
+    { id: 'demo-facility', title: '地域交流館', category: '施設', text: '公共施設の記録例', lat: 35.250, lng: 135.208 },
+    { id: 'demo-nature', title: '自然観察スポット', category: '自然', text: '自然スポットの記録例', lat: 35.248, lng: 135.202 },
+    { id: 'demo-hidden', title: '非表示のテストピン', category: 'その他', text: '復元確認用', lat: 35.251, lng: 135.210, archivedAt: '2026-08-28T00:00:00.000Z' },
+  ],
+};
 
 // ---- 状態 ----
 const state = {
@@ -35,10 +32,6 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c]);
-}
-
-function catColor(kind, category) {
-  return CATEGORIES[kind][category] || CATEGORIES[kind]['その他'];
 }
 
 function today() {
@@ -98,10 +91,17 @@ async function api(path, method = 'GET', body, baseItem = null) {
   }
 
   if (method === 'DELETE') {
-    kmapRecordMerge.assertSafeDelete(baseItem, items[index]);
-    const [removed] = items.splice(index, 1);
-    await kmapStorage.saveCollection(kind, items, `${kind}: delete ${removed.title}`);
-    return removed;
+    const archived = kmapRecordMerge.archiveItem(baseItem, items[index]);
+    items[index] = archived;
+    await kmapStorage.saveCollection(kind, items, `${kind}: archive ${archived.title}`);
+    return archived;
+  }
+
+  if (method === 'RESTORE') {
+    const restored = kmapRecordMerge.restoreItem(baseItem, items[index]);
+    items[index] = restored;
+    await kmapStorage.saveCollection(kind, items, `${kind}: restore ${restored.title}`);
+    return restored;
   }
 
   throw new Error(`未対応の操作: ${method}`);
@@ -151,12 +151,48 @@ const map = new maplibregl.Map({
         maxzoom: 14,
         attribution: 'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank">Mapzen/AWS</a>',
       },
+      hazardFlood: {
+        type: 'raster',
+        tiles: ['https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minzoom: 2,
+        maxzoom: 17,
+        attribution: '<a href="https://disaportal.gsi.go.jp/" target="_blank">ハザードマップポータルサイト</a>',
+      },
+      hazardDebris: {
+        type: 'raster',
+        tiles: ['https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minzoom: 2,
+        maxzoom: 17,
+        attribution: '<a href="https://disaportal.gsi.go.jp/" target="_blank">ハザードマップポータルサイト</a>',
+      },
+      hazardSteep: {
+        type: 'raster',
+        tiles: ['https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minzoom: 2,
+        maxzoom: 17,
+        attribution: '<a href="https://disaportal.gsi.go.jp/" target="_blank">ハザードマップポータルサイト</a>',
+      },
+      hazardLandslide: {
+        type: 'raster',
+        tiles: ['https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minzoom: 2,
+        maxzoom: 17,
+        attribution: '<a href="https://disaportal.gsi.go.jp/" target="_blank">ハザードマップポータルサイト</a>',
+      },
     },
     layers: [
       { id: 'photo', type: 'raster', source: 'photo' },
       { id: 'std', type: 'raster', source: 'std', layout: { visibility: 'none' } },
       // aerial photos already contain natural shading — hillshade is only for the plain map
       { id: 'hills', type: 'hillshade', source: 'dem', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.25 } },
+      { id: 'hazard-flood', type: 'raster', source: 'hazardFlood', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.68 } },
+      { id: 'hazard-debris', type: 'raster', source: 'hazardDebris', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.72 } },
+      { id: 'hazard-steep', type: 'raster', source: 'hazardSteep', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.72 } },
+      { id: 'hazard-landslide', type: 'raster', source: 'hazardLandslide', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.72 } },
     ],
     terrain: { source: 'dem', exaggeration: 1.3 },
     sky: {
@@ -308,6 +344,124 @@ class AddPinControl {
 }
 map.addControl(new AddPinControl());
 
+// 防災レイヤーの表示切り替え。データは国土地理院・ハザードマップ
+// ポータルから都度読み込み、アプリ側で防災リスクを断定しない。
+const HAZARD_LAYERS = {
+  flood: ['hazard-flood'],
+  sediment: ['hazard-debris', 'hazard-steep', 'hazard-landslide'],
+};
+const hazardPanel = document.getElementById('hazard-panel');
+
+class HazardControl {
+  onAdd() {
+    this._container = document.createElement('div');
+    this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '防災';
+    btn.title = '防災レイヤーを開く';
+    btn.style.cssText = 'font-size:11px;width:44px;font-weight:bold;';
+    btn.onclick = () => hazardPanel.classList.toggle('hidden');
+    this._container.appendChild(btn);
+    return this._container;
+  }
+  onRemove() { this._container.remove(); }
+}
+map.addControl(new HazardControl());
+
+document.getElementById('hazard-close').onclick = () => hazardPanel.classList.add('hidden');
+
+let shelterMarkers = [];
+let sheltersVisible = false;
+
+function tileFor(lng, lat, zoom) {
+  const n = 2 ** zoom;
+  return {
+    x: Math.floor(((lng + 180) / 360) * n),
+    y: Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * n),
+  };
+}
+
+function shelterHazards(properties) {
+  const labels = [];
+  if (properties.disaster1) labels.push('洪水');
+  if (properties.disaster2) labels.push('土砂災害');
+  if (properties.disaster4) labels.push('地震');
+  if (properties.disaster6) labels.push('大規模火災');
+  if (properties.disaster7) labels.push('内水氾濫');
+  return labels;
+}
+
+async function loadShelters() {
+  const zoom = 10;
+  const tile = tileFor(CENTER[0], CENTER[1], zoom);
+  const url = `https://cyberjapandata.gsi.go.jp/xyz/skhb04/${zoom}/${tile.x}/${tile.y}.geojson`;
+  try {
+    const collection = await (await fetch(url)).json();
+    const features = collection.features.filter((feature) => {
+      const p = feature.properties || {};
+      return String(p.name || '').includes('上六人部')
+        || String(p.address || '').includes('福知山市字三俣');
+    });
+    for (const feature of features) {
+      const p = feature.properties || {};
+      const [lng, lat] = feature.geometry.coordinates;
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'shelter-marker';
+      el.textContent = '避';
+      el.title = `指定緊急避難場所: ${p.name}`;
+      el.style.display = sheltersVisible ? '' : 'none';
+      el.onclick = (event) => {
+        event.stopPropagation();
+        if (activePopup) activePopup.remove();
+        const hazards = shelterHazards(p);
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <p class="popup-title">${esc(p.name)}</p>
+          <span class="popup-cat shelter-cat">指定緊急避難場所</span>
+          <p class="popup-meta">${esc(p.address || '')}</p>
+          <p class="popup-meta">対象: ${esc(hazards.join('・') || '詳細は自治体情報を確認')}</p>
+          <p class="route-warning">経路は候補です。災害時の通行可否や避難指示を必ず確認してください。</p>
+          <a class="route-link" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking" target="_blank" rel="noopener">現在地からの経路候補を開く</a>`;
+        activePopup = new maplibregl.Popup({ offset: 18, maxWidth: '310px' })
+          .setLngLat([lng, lat])
+          .setDOMContent(div)
+          .addTo(map);
+      };
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([lng, lat])
+        .addTo(map);
+      shelterMarkers.push(marker);
+    }
+  } catch (err) {
+    console.warn('指定緊急避難場所を読み込めませんでした', err);
+  }
+}
+
+function setSheltersVisible(visible) {
+  sheltersVisible = visible;
+  shelterMarkers.forEach((marker) => {
+    marker.getElement().style.display = visible ? '' : 'none';
+  });
+}
+
+document.querySelectorAll('[data-hazard]').forEach((input) => {
+  input.addEventListener('change', () => {
+    const kind = input.dataset.hazard;
+    if (kind === 'shelter') {
+      setSheltersVisible(input.checked);
+      return;
+    }
+    const visibility = input.checked ? 'visible' : 'none';
+    for (const id of HAZARD_LAYERS[kind] || []) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+    }
+  });
+});
+
+map.on('load', loadShelters);
+
 // ---- マーカー ----
 function clearMarkers() {
   state.markers.forEach((mk) => mk.remove());
@@ -317,15 +471,17 @@ function clearMarkers() {
 function renderMarkers() {
   clearMarkers();
   for (const kind of ['spots', 'notes']) {
-    for (const item of state[kind]) {
+    for (const item of kmapPinTypes.activeItems(state[kind])) {
+      const pinType = kmapPinTypes.typeFor(kind, item.category);
       const el = document.createElement('div');
-      el.className = `marker ${kind === 'spots' ? 'spot' : 'note'}`;
-      el.style.background = catColor(kind, item.category);
+      el.className = `marker marker-${pinType.id}`;
+      el.title = `${pinType.label}: ${item.title}`;
+      el.setAttribute('aria-label', `${pinType.label}: ${item.title}`);
       el.addEventListener('click', (e) => {
         e.stopPropagation(); // 地図クリック（追加メニュー）を発火させない
         openDetail(kind, item);
       });
-      const mk = new maplibregl.Marker({ element: el, anchor: kind === 'spots' ? 'center' : 'bottom' })
+      const mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([item.lng, item.lat])
         .addTo(map);
       state.markers.push(mk);
@@ -338,6 +494,7 @@ let activePopup = null;
 
 function openDetail(kind, item) {
   if (activePopup) activePopup.remove();
+  const pinType = kmapPinTypes.typeFor(kind, item.category);
   const div = document.createElement('div');
   const peopleHtml = kind === 'notes' && item.people?.length
     ? `<p class="popup-meta">👥 ${esc(item.people.join('、'))}</p>` : '';
@@ -347,7 +504,7 @@ function openDetail(kind, item) {
     ? `<div class="popup-photos">${item.photos.map((f) => `<img data-photo="${esc(f)}" alt="">`).join('')}</div>` : '';
   div.innerHTML = `
     <p class="popup-title">${esc(item.title)}</p>
-    <span class="popup-cat" style="background:${catColor(kind, item.category)}">${esc(item.category || 'その他')}</span>
+    <span class="popup-cat" style="background:${pinType.color}">${pinType.icon} ${esc(pinType.label)}</span>
     ${dateHtml}${peopleHtml}
     ${photosHtml}
     ${item.text ? `<p class="popup-text">${esc(item.text)}</p>` : ''}
@@ -355,7 +512,7 @@ function openDetail(kind, item) {
     <div class="popup-actions">
       <button data-act="edit">✏️ 編集</button>
       <button data-act="move">📍 移動</button>
-      <button data-act="delete" class="danger">🗑 削除</button>
+      <button data-act="delete" class="danger">🗑 非表示</button>
     </div>`;
   resolvePhotos(div);
   div.querySelectorAll('.popup-photos img').forEach((img) => {
@@ -370,13 +527,15 @@ function openDetail(kind, item) {
     startMove(kind, item);
   };
   div.querySelector('[data-act="delete"]').onclick = async () => {
-    if (!confirm(`「${item.title}」を削除しますか？`)) return;
+    if (!confirm(
+      `「${item.title}」を地図から非表示にしますか？\n記録と写真は削除せず、あとで戻せます。`,
+    )) return;
     try {
       await api(`/api/${kind}/${item.id}`, 'DELETE', null, item);
       activePopup.remove();
       await loadAll();
     } catch (err) {
-      alert(`削除できませんでした: ${err.message}`);
+      alert(`非表示にできませんでした: ${err.message}`);
     }
   };
   activePopup = new maplibregl.Popup({ offset: 18, maxWidth: '300px' })
@@ -500,8 +659,10 @@ function openForm(kind, latlng, existing = null) {
     `${KIND_LABEL[kind]}を${existing ? '編集' : '追加'}`;
 
   const select = form.elements.category;
-  select.innerHTML = Object.keys(CATEGORIES[kind])
-    .map((c) => `<option>${esc(c)}</option>`).join('');
+  const formTypes = kmapPinTypes.formCategories(kind);
+  select.innerHTML = formTypes
+    .map((type) => `<option value="${esc(type.category)}">${type.icon} ${esc(type.label)}</option>`)
+    .join('');
 
   const isNote = kind === 'notes';
   document.getElementById('date-field').style.display = isNote ? '' : 'none';
@@ -509,7 +670,10 @@ function openForm(kind, latlng, existing = null) {
 
   form.elements.title.value = existing?.title || '';
   form.elements.date.value = existing?.date || today();
-  form.elements.category.value = existing?.category || Object.keys(CATEGORIES[kind])[0];
+  const existingType = existing
+    ? kmapPinTypes.typeFor(kind, existing.category)
+    : formTypes[0];
+  form.elements.category.value = existingType.category;
   form.elements.people.value = existing?.people?.join(', ') || '';
   form.elements.text.value = existing?.text || '';
   form.elements.source.value = existing?.source || '';
@@ -594,7 +758,8 @@ function filteredItems() {
   const kind = state.activeTab;
   const q = state.query.toLowerCase();
   let items = state[kind].filter((it) => {
-    if (state.categoryFilter && it.category !== state.categoryFilter) return false;
+    if (it.archivedAt) return false;
+    if (state.categoryFilter && kmapPinTypes.typeIdFor(kind, it.category) !== state.categoryFilter) return false;
     if (!q) return true;
     const hay = [it.title, it.text, ...(it.people || [])].join(' ').toLowerCase();
     return hay.includes(q);
@@ -614,12 +779,12 @@ function renderChips() {
   if (state.categoryFilter === null) all.style.background = '#1b4332';
   all.onclick = () => { state.categoryFilter = null; renderSidebar(); };
   wrap.appendChild(all);
-  for (const [cat, color] of Object.entries(CATEGORIES[state.activeTab])) {
+  for (const type of kmapPinTypes.formCategories(state.activeTab)) {
     const chip = document.createElement('button');
-    chip.className = `chip ${state.categoryFilter === cat ? 'active' : ''}`;
-    chip.textContent = cat;
-    if (state.categoryFilter === cat) chip.style.background = color;
-    chip.onclick = () => { state.categoryFilter = cat; renderSidebar(); };
+    chip.className = `chip ${state.categoryFilter === type.id ? 'active' : ''}`;
+    chip.textContent = `${type.icon} ${type.label}`;
+    if (state.categoryFilter === type.id) chip.style.background = type.color;
+    chip.onclick = () => { state.categoryFilter = type.id; renderSidebar(); };
     wrap.appendChild(chip);
   }
 }
@@ -640,13 +805,14 @@ function renderList() {
     return;
   }
   for (const item of items) {
+    const pinType = kmapPinTypes.typeFor(kind, item.category);
     const li = document.createElement('li');
     const meta = kind === 'notes'
       ? [item.date, item.people?.length ? `👥 ${item.people.join('、')}` : '']
-      : [item.category];
+      : [`${pinType.icon} ${pinType.label}`];
     li.innerHTML = `
       <div class="item-top">
-        <span class="dot" style="background:${catColor(kind, item.category)}"></span>
+        <span class="pin-symbol" aria-hidden="true">${pinType.icon}</span>
         <span class="item-title">${esc(item.title)}</span>
       </div>
       <div class="item-meta">${esc(meta.filter(Boolean).join(' ／ '))}</div>
@@ -665,11 +831,65 @@ function renderList() {
 }
 
 function renderSidebar() {
-  document.getElementById('notes-count').textContent = state.notes.length || '';
-  document.getElementById('spots-count').textContent = state.spots.length || '';
+  const notesCount = kmapPinTypes.activeItems(state.notes).length;
+  const spotsCount = kmapPinTypes.activeItems(state.spots).length;
+  document.getElementById('notes-count').textContent = notesCount || '';
+  document.getElementById('spots-count').textContent = spotsCount || '';
   renderChips();
   renderList();
 }
+
+// ---- 非表示ピン（記録を消さず、復元できる） ----
+const trashBackdrop = document.getElementById('trash-backdrop');
+
+function renderTrash() {
+  const list = document.getElementById('trash-list');
+  list.innerHTML = '';
+  const archived = ['notes', 'spots'].flatMap((kind) => state[kind]
+    .filter((item) => item.archivedAt)
+    .map((item) => ({ kind, item })));
+
+  if (!archived.length) {
+    const li = document.createElement('li');
+    li.className = 'trash-empty';
+    li.textContent = '非表示にしたピンはありません。';
+    list.appendChild(li);
+    return;
+  }
+
+  archived.sort((a, b) => (b.item.archivedAt || '').localeCompare(a.item.archivedAt || ''));
+  for (const { kind, item } of archived) {
+    const pinType = kmapPinTypes.typeFor(kind, item.category);
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div><strong>${pinType.icon} ${esc(item.title)}</strong><br>
+      <span>${new Date(item.archivedAt).toLocaleString('ja-JP')}</span></div>
+      <button type="button">地図へ戻す</button>`;
+    li.querySelector('button').onclick = async () => {
+      const button = li.querySelector('button');
+      button.disabled = true;
+      try {
+        await api(`/api/${kind}/${item.id}`, 'RESTORE', null, item);
+        await loadAll();
+        renderTrash();
+      } catch (err) {
+        alert(`復元できませんでした: ${err.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    };
+    list.appendChild(li);
+  }
+}
+
+document.getElementById('trash-open').onclick = () => {
+  renderTrash();
+  trashBackdrop.classList.remove('hidden');
+};
+document.getElementById('trash-close').onclick = () => trashBackdrop.classList.add('hidden');
+trashBackdrop.addEventListener('click', (event) => {
+  if (event.target === trashBackdrop) trashBackdrop.classList.add('hidden');
+});
 
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.onclick = () => {
@@ -710,6 +930,13 @@ if (isMobile()) {
 
 // ---- 初期ロード ----
 async function loadAll() {
+  if (DEMO_MODE) {
+    state.notes = DEMO_DATA.notes.map((item) => ({ ...item }));
+    state.spots = DEMO_DATA.spots.map((item) => ({ ...item }));
+    renderMarkers();
+    renderSidebar();
+    return;
+  }
   [state.notes, state.spots] = await Promise.all([api('/api/notes'), api('/api/spots')]);
   renderMarkers();
   renderSidebar();
@@ -787,7 +1014,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=5').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=6').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
@@ -795,7 +1022,9 @@ window.addEventListener('online', () => loadAll().catch(() => {}));
 window.addEventListener('offline', () => setOfflineBanner(true));
 
 kmapStorage.loadConfig();
-if (kmapStorage.hasConfig()) {
+if (DEMO_MODE) {
+  loadAll().catch((err) => alert(`デモを読み込めませんでした: ${err.message}`));
+} else if (kmapStorage.hasConfig()) {
   loadAll().catch((err) => {
     alert(`データを読み込めませんでした: ${err.message}`);
     openSetup();

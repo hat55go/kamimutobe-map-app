@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  mergeItem, mergePhotoRefs, assertSafeDelete, parseApiPath,
+  mergeItem, mergePhotoRefs, assertSafeDelete, archiveItem, restoreItem, parseApiPath,
 } = require('../record-merge.js');
 
 const base = {
@@ -48,6 +48,21 @@ test('編集中に対象が変更された場合は削除を止める', () => {
     assert.equal(err.code, 'RECORD_CONFLICT');
     return true;
   });
+});
+
+test('削除操作は内容を残したまま非表示にする', () => {
+  const archived = archiveItem(base, base, '2026-08-28T01:00:00.000Z');
+  assert.equal(archived.archivedAt, '2026-08-28T01:00:00.000Z');
+  assert.equal(archived.title, base.title);
+  assert.deepEqual(archived.photos, base.photos);
+});
+
+test('非表示ピンを内容そのままで復元する', () => {
+  const archived = archiveItem(base, base, '2026-08-28T01:00:00.000Z');
+  const restored = restoreItem(archived, archived, '2026-08-28T02:00:00.000Z');
+  assert.equal(restored.archivedAt, null);
+  assert.equal(restored.text, base.text);
+  assert.deepEqual(restored.photos, base.photos);
 });
 
 test('初期地点のハイフン付きIDを編集パスとして受け付ける', () => {

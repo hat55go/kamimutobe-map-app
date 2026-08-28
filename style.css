@@ -45,6 +45,22 @@ body {
   font-size: 12px;
 }
 
+#trash-open {
+  position: absolute;
+  top: 12px;
+  right: 46px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#trash-open:hover { background: rgba(255, 255, 255, 0.3); }
+
 #sidebar-toggle:hover { background: rgba(255, 255, 255, 0.3); }
 
 #sidebar-open {
@@ -153,12 +169,7 @@ body {
   gap: 6px;
 }
 
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.pin-symbol { width: 22px; flex-shrink: 0; text-align: center; }
 
 .item-title { font-size: 14px; font-weight: 600; color: #212529; }
 .item-meta { margin-top: 3px; font-size: 12px; color: #868e96; }
@@ -178,16 +189,43 @@ body {
 #map { flex: 1; height: 100%; }
 
 .marker {
-  width: 18px;
-  height: 18px;
-  border-radius: 50% 50% 50% 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50% 50% 50% 8px;
   transform: rotate(-45deg);
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
 }
 
-.marker.spot { border-radius: 4px; transform: none; }
+.marker-memo { background: #fff4e6; }
+.marker-shop { background: #f8f0fc; }
+.marker-facility { background: #e7f5ff; }
+.marker-nature { background: #ebfbee; }
+
+.marker-memo::before { content: '📍'; }
+.marker-shop::before { content: '🛖'; }
+.marker-facility::before { content: '🏤'; }
+.marker-nature::before { content: '❇️'; }
+.marker::before { display: inline-block; transform: rotate(45deg); }
+
+.shelter-marker {
+  width: 30px;
+  height: 34px;
+  border: 2px solid #fff;
+  border-radius: 7px 7px 12px 12px;
+  background: #1971c2;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
 
 /* コントロール群は地図中央上部に横並び（右端だとコンパスの右ドラッグができないため） */
 .maplibregl-ctrl-top-right {
@@ -245,6 +283,20 @@ body {
 
 .popup-actions button:hover, .add-chooser button:hover { background: #f1f3f5; }
 .popup-actions .danger { color: #c92a2a; border-color: #ffc9c9; }
+
+.shelter-cat { background: #1971c2; }
+.route-warning { margin: 8px 0; color: #c92a2a; font-size: 11px; line-height: 1.45; }
+.route-link {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #1971c2;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .add-chooser { display: flex; flex-direction: column; gap: 6px; }
 .add-chooser .hint { font-size: 12px; color: #868e96; margin: 0 0 2px; }
@@ -452,6 +504,74 @@ body {
 
 #offline-banner.hidden { display: none; }
 
+/* ---- 防災レイヤー ---- */
+.floating-panel {
+  position: fixed;
+  top: 72px;
+  right: 14px;
+  z-index: 65;
+  width: 290px;
+  padding: 14px;
+  border: 1px solid #ced4da;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.floating-panel.hidden { display: none; }
+.floating-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.floating-panel-head h2 { margin: 0; color: #1b4332; font-size: 17px; }
+.floating-panel-head > button { border: none; background: none; font-size: 22px; cursor: pointer; }
+.floating-panel > label { display: block; margin-top: 10px; font-size: 13px; cursor: pointer; }
+.hazard-note { margin: 12px 0 6px; color: #c92a2a; font-size: 11px; line-height: 1.55; }
+.hazard-source { margin: 0; font-size: 11px; }
+.hazard-source a { color: #1864ab; }
+.hazard-doc-link {
+  display: block;
+  margin-top: 11px;
+  color: #1864ab;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- 復元可能な非表示ピン ---- */
+#trash-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#trash-backdrop.hidden { display: none; }
+#trash-panel {
+  width: 460px;
+  max-width: 100%;
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.trash-lead { color: #495057; font-size: 12px; }
+#trash-list { margin: 12px 0 0; padding: 0; list-style: none; }
+#trash-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #e9ecef;
+  font-size: 13px;
+}
+#trash-list span { color: #868e96; font-size: 11px; }
+#trash-list button { white-space: nowrap; padding: 6px 10px; border: 1px solid #74c0fc; border-radius: 6px; background: #e7f5ff; color: #1864ab; cursor: pointer; }
+#trash-list .trash-empty { display: block; color: #868e96; text-align: center; }
+
 .photo-missing { min-width: 76px; min-height: 76px; background: #f1f3f5; border-radius: 4px; }
 
 /* ---- モバイル（縦画面）: 地図全面＋下から引き出すシート ---- */
@@ -493,6 +613,13 @@ body {
   }
 
   #item-form { width: calc(100vw - 28px); }
+
+  .floating-panel {
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
 
   #move-hint {
     left: 50% !important;

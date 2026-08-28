@@ -76,11 +76,23 @@
     if (base && !same(base, latest)) throw conflictError(['削除対象']);
   }
 
+  function archiveItem(base, latest, archivedAt = new Date().toISOString()) {
+    assertSafeDelete(base, latest);
+    return { ...latest, archivedAt, updatedAt: archivedAt };
+  }
+
+  function restoreItem(base, latest, restoredAt = new Date().toISOString()) {
+    assertSafeDelete(base, latest);
+    return { ...latest, archivedAt: null, updatedAt: restoredAt };
+  }
+
   function parseApiPath(path) {
     const match = path.match(/^\/api\/(notes|spots)(?:\/([^/]+))?$/);
     if (!match) throw new Error(`不正なパス: ${path}`);
     return { kind: match[1], id: match[2] ? decodeURIComponent(match[2]) : null };
   }
 
-  return { same, mergeItem, mergePhotoRefs, assertSafeDelete, parseApiPath };
+  return {
+    same, mergeItem, mergePhotoRefs, assertSafeDelete, archiveItem, restoreItem, parseApiPath,
+  };
 }));
