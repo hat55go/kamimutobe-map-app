@@ -26,6 +26,14 @@ test('別項目の同時編集は両方を保持する', () => {
   assert.equal(merged.id, base.id);
 });
 
+test('公開状態の変更を他項目の更新と安全に合流する', () => {
+  const latest = { ...base, text: '別端末で本文を更新' };
+  const candidate = { ...base, visibility: 'public' };
+  const merged = mergeItem(base, latest, candidate);
+  assert.equal(merged.text, '別端末で本文を更新');
+  assert.equal(merged.visibility, 'public');
+});
+
 test('同じ項目の競合は上書きせず停止する', () => {
   const latest = { ...base, text: '別端末の追記' };
   const candidate = { ...base, text: '手元の追記' };
