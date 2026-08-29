@@ -1,5 +1,9 @@
 {
-  "generatedAt": null,
-  "sourceCommit": null,
-  "notice": "公開する記録を選ぶと、こちらへ自動反映されます。"
+  "generatedAt": "2026-08-29T12:39:04.973Z",
+  "sourceCommit": "63e7a55e49b525b60a71071fba104e802f48d7a4",
+  "counts": {
+    "notes": 0,
+    "spots": 0,
+    "photos": 0
+  }
 }
