@@ -505,11 +505,14 @@ function openDetail(kind, item) {
     ? `<p class="popup-meta">👥 ${esc(item.people.join('、'))}</p>` : '';
   const dateHtml = kind === 'notes' && item.date
     ? `<p class="popup-meta">📅 ${esc(item.date)}</p>` : '';
+  const publicationHtml = item.visibility === 'public'
+    ? '<span class="publication-badge">🌐 公開中</span>' : '';
   const photosHtml = item.photos?.length
     ? `<div class="popup-photos">${item.photos.map((f) => `<img data-photo="${esc(f)}" alt="">`).join('')}</div>` : '';
   div.innerHTML = `
     <p class="popup-title">${esc(item.title)}</p>
     <span class="popup-cat" style="background:${pinType.color}">${pinType.icon} ${esc(pinType.label)}</span>
+    ${publicationHtml}
     ${dateHtml}${peopleHtml}
     ${photosHtml}
     ${item.text ? `<p class="popup-text">${esc(item.text)}</p>` : ''}
@@ -682,6 +685,7 @@ function openForm(kind, latlng, existing = null) {
   form.elements.people.value = existing?.people?.join(', ') || '';
   form.elements.text.value = existing?.text || '';
   form.elements.source.value = existing?.source || '';
+  form.elements.published.checked = existing?.visibility === 'public';
   form.elements.photos.value = '';
   keepPhotos = existing?.photos ? [...existing.photos] : [];
   pendingPhotoUploads = new Map();
@@ -712,6 +716,7 @@ form.addEventListener('submit', async (e) => {
     text: form.elements.text.value.trim(),
     lat: latlng.lat,
     lng: latlng.lng,
+    visibility: form.elements.published.checked ? 'public' : 'private',
   };
   if (!existing) body.id = draftId;
   if (kind === 'notes') {
@@ -819,6 +824,7 @@ function renderList() {
       <div class="item-top">
         <span class="pin-symbol" aria-hidden="true">${pinType.icon}</span>
         <span class="item-title">${esc(item.title)}</span>
+        ${item.visibility === 'public' ? '<span class="publication-badge">🌐 公開中</span>' : ''}
       </div>
       <div class="item-meta">${esc(meta.filter(Boolean).join(' ／ '))}</div>
       ${item.text ? `<div class="item-text">${esc(item.text)}</div>` : ''}`;
@@ -1019,7 +1025,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=8').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=10').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
