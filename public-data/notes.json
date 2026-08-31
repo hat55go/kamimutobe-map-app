@@ -21,9 +21,15 @@
     "text": "物語が始まりそうな予感",
     "lat": 35.253240656218054,
     "lng": 135.21615788340569,
-    "photos": [],
+    "photos": [
+      "tanada-fudoson-shrine.jpg",
+      "tanada-fudoson-sign.jpg",
+      "tanada-fudoson-approach.jpg",
+      "tanada-fudoson-waterfall.jpg"
+    ],
     "source": "",
     "date": "2026-07-28",
-    "createdAt": "2026-07-28T04:48:02.759Z"
+    "createdAt": "2026-07-28T04:48:02.759Z",
+    "updatedAt": "2026-08-31T04:58:10Z"
   }
 ]
