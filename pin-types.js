@@ -38,16 +38,26 @@
     return TYPES[typeIdFor(kind, category)];
   }
 
-  function formCategories(kind) {
+  function formCategories(kind, { includeMemoSpot = false } = {}) {
     const ids = kind === 'notes'
       ? ['memo']
-      : ['memo', 'shop', 'facility', 'shrine', 'nature'];
+      : [
+        ...(includeMemoSpot ? ['memo'] : []),
+        'shop', 'facility', 'shrine', 'nature',
+      ];
     return ids.map((id) => TYPES[id]);
+  }
+
+  function addChoices() {
+    return ['memo', 'shop', 'facility', 'shrine', 'nature'].map((id) => ({
+      ...TYPES[id],
+      kind: id === 'memo' ? 'notes' : 'spots',
+    }));
   }
 
   function activeItems(items) {
     return items.filter((item) => !item.archivedAt);
   }
 
-  return { TYPES, typeIdFor, typeFor, formCategories, activeItems };
+  return { TYPES, typeIdFor, typeFor, formCategories, addChoices, activeItems };
 }));
