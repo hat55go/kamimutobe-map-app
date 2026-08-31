@@ -127,5 +127,18 @@
     "photos": [],
     "source": "",
     "createdAt": "2026-08-28T01:33:30.304Z"
+  },
+  {
+    "id": "mtgslza1g1l5",
+    "title": "上六人部保育園",
+    "category": "公共施設",
+    "text": "",
+    "lat": 35.25343121346705,
+    "lng": 135.21165445446968,
+    "photos": [
+      "mtgsnqb6k0d2.jpg"
+    ],
+    "source": "",
+    "createdAt": "2026-08-31T05:24:56.406Z"
   }
 ]
