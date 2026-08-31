@@ -206,6 +206,14 @@ function cardHtml(kind, item) {
     </div>`;
 }
 
+function focusMapOnItem(item) {
+  map.flyTo({ center: [item.lng, item.lat], zoom: 15.2, pitch: 52, essential: true });
+  if (window.matchMedia('(max-width: 760px)').matches) {
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    document.querySelector('.map-panel').scrollIntoView({ behavior, block: 'start' });
+  }
+}
+
 function renderCards() {
   const wrap = document.getElementById('cards');
   wrap.innerHTML = '';
@@ -220,15 +228,11 @@ function renderCards() {
     card.className = `record-card ${item.photos?.length ? '' : 'no-photo'}`;
     card.tabIndex = 0;
     card.innerHTML = cardHtml(state.activeKind, item);
-    const show = () => {
-      map.flyTo({ center: [item.lng, item.lat], zoom: 15.2, pitch: 52, essential: true });
-      openDetail(state.activeKind, item);
-    };
-    card.onclick = show;
+    card.onclick = () => focusMapOnItem(item);
     card.onkeydown = (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        show();
+        focusMapOnItem(item);
       }
     };
     wrap.appendChild(card);
@@ -320,4 +324,4 @@ setInterval(() => {
   if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt.getTime() >= 60_000) loadAll();
 }, 60_000);
 
-window._kmapReport = { map, state, loadAll, openDetail };
+window._kmapReport = { map, state, loadAll, openDetail, focusMapOnItem };

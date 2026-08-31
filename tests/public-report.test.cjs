@@ -23,6 +23,15 @@ test('公開ページは公開スナップショットを常に再取得でき�
   assert.match(app, /setInterval/);
 });
 
+test('一覧カードは詳細モーダルを開かず地図だけを移動する', () => {
+  const app = read('report/app.js');
+  const renderCards = app.match(/function renderCards\(\)[\s\S]*?\n}\n\nconst detailBackdrop/);
+  assert.ok(renderCards, 'renderCards block should be found');
+  assert.match(renderCards[0], /focusMapOnItem\(item\)/);
+  assert.doesNotMatch(renderCards[0], /openDetail\(/);
+  assert.match(app, /scrollIntoView/);
+});
+
 test('モバイル表示と地点固定マーカーを維持する', () => {
   const app = read('report/app.js');
   const css = read('report/style.css');
@@ -40,7 +49,15 @@ test('編集画面は公開対象を明示的に選ぶ', () => {
   assert.match(app, /visibility:\s*form\.elements\.published\.checked \? 'public' : 'private'/);
 });
 
-test('初期公開データは空で、誤って既存記録を公開しない', () => {
-  assert.deepEqual(JSON.parse(read('public-data/notes.json')), []);
-  assert.deepEqual(JSON.parse(read('public-data/spots.json')), []);
+test('公開データの件数が一致し、非公開フィールドを含まない', () => {
+  const notes = JSON.parse(read('public-data/notes.json'));
+  const spots = JSON.parse(read('public-data/spots.json'));
+  const meta = JSON.parse(read('public-data/meta.json'));
+  assert.equal(notes.length, meta.counts.notes);
+  assert.equal(spots.length, meta.counts.spots);
+  for (const item of [...notes, ...spots]) {
+    assert.equal('people' in item, false);
+    assert.equal('visibility' in item, false);
+    assert.equal('archivedAt' in item, false);
+  }
 });
