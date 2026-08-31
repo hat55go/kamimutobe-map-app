@@ -16,6 +16,12 @@ test('公開ページは読み取り専用で編集用credentialを要求しな�
   assert.match(html, /noindex,nofollow/);
 });
 
+test('Mac内の公開ページを直接開いた場合は正式な公開URLへ移動する', () => {
+  const html = read('report/index.html');
+  assert.match(html, /window\.location\.protocol === 'file:'/);
+  assert.match(html, /window\.location\.replace\('https:\/\/hat55go\.github\.io\/kamimutobe-map-app\/report\/'\)/);
+});
+
 test('公開ページは公開スナップショットを常に再取得できる', () => {
   const app = read('report/app.js');
   assert.match(app, /public-data\/notes\.json/);
