@@ -2,7 +2,7 @@
 
 // ---- 定数 ----
 const CENTER = [135.207, 35.250]; // 上六人部（土師川中流域）の中心付近
-const KIND_LABEL = { notes: '記録', spots: '場所' };
+const KIND_LABEL = { notes: 'メモ', spots: '場所' };
 const DEMO_MODE = ['localhost', '127.0.0.1'].includes(location.hostname)
   && new URLSearchParams(location.search).has('demo');
 const DEMO_DATA = {
@@ -615,14 +615,24 @@ map.on('click', async (e) => {
   if (activePopup) activePopup.remove();
   const div = document.createElement('div');
   div.className = 'add-chooser';
+  const choices = kmapPinTypes.addChoices()
+    .map((type) => `
+      <button data-kind="${type.kind}" data-category="${esc(type.category)}">
+        ${type.icon} ${esc(type.label)}を追加
+      </button>`)
+    .join('');
   div.innerHTML = `
     <p class="hint">ここにピンを追加</p>
-    <button data-kind="notes">📖 記録を追加（日記・出会い）</button>
-    <button data-kind="spots">📍 場所を追加（図鑑）</button>`;
+    ${choices}`;
   div.querySelectorAll('button').forEach((btn) => {
     btn.onclick = () => {
       activePopup.remove();
-      openForm(btn.dataset.kind, { lat: e.lngLat.lat, lng: e.lngLat.lng });
+      openForm(
+        btn.dataset.kind,
+        { lat: e.lngLat.lat, lng: e.lngLat.lng },
+        null,
+        btn.dataset.category,
+      );
     };
   });
   activePopup = new maplibregl.Popup({ closeOnClick: true })
@@ -661,13 +671,18 @@ function renderPhotoPreviews() {
   resolvePhotos(wrap);
 }
 
-function openForm(kind, latlng, existing = null) {
+function openForm(kind, latlng, existing = null, initialCategory = null) {
   formContext = { kind, latlng, existing, draftId: existing ? null : genId() };
   document.getElementById('form-title').textContent =
     `${KIND_LABEL[kind]}を${existing ? '編集' : '追加'}`;
 
   const select = form.elements.category;
-  const formTypes = kmapPinTypes.formCategories(kind);
+  const existingType = existing
+    ? kmapPinTypes.typeFor(kind, existing.category)
+    : null;
+  const formTypes = kmapPinTypes.formCategories(kind, {
+    includeMemoSpot: kind === 'spots' && existingType?.id === 'memo',
+  });
   select.innerHTML = formTypes
     .map((type) => `<option value="${esc(type.category)}">${type.icon} ${esc(type.label)}</option>`)
     .join('');
@@ -678,10 +693,7 @@ function openForm(kind, latlng, existing = null) {
 
   form.elements.title.value = existing?.title || '';
   form.elements.date.value = existing?.date || today();
-  const existingType = existing
-    ? kmapPinTypes.typeFor(kind, existing.category)
-    : formTypes[0];
-  form.elements.category.value = existingType.category;
+  form.elements.category.value = existingType?.category || initialCategory || formTypes[0].category;
   form.elements.people.value = existing?.people?.join(', ') || '';
   form.elements.text.value = existing?.text || '';
   form.elements.source.value = existing?.source || '';
@@ -1025,7 +1037,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=12').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=13').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
