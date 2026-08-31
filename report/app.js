@@ -214,6 +214,29 @@ function focusMapOnItem(item) {
   }
 }
 
+function showAllItems() {
+  const items = [...state.notes, ...state.spots]
+    .filter((item) => !item.archivedAt && Number.isFinite(item.lat) && Number.isFinite(item.lng));
+  const isMobile = window.matchMedia('(max-width: 760px)').matches;
+  if (!items.length) {
+    map.easeTo({ center: CENTER, zoom: 13.2, pitch: 48, bearing: -18, duration: 800 });
+  } else {
+    const bounds = new maplibregl.LngLatBounds();
+    items.forEach((item) => bounds.extend([item.lng, item.lat]));
+    map.fitBounds(bounds, {
+      padding: isMobile ? 46 : 78,
+      maxZoom: 13.6,
+      pitch: 42,
+      bearing: -18,
+      duration: 900,
+    });
+  }
+  if (isMobile) {
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    document.querySelector('.map-panel').scrollIntoView({ behavior, block: 'start' });
+  }
+}
+
 function renderCards() {
   const wrap = document.getElementById('cards');
   wrap.innerHTML = '';
@@ -305,6 +328,7 @@ async function loadAll() {
 }
 
 document.getElementById('refresh-button').onclick = loadAll;
+document.getElementById('fit-all-button').onclick = showAllItems;
 document.getElementById('share-button').onclick = async () => {
   const shareData = { title: document.title, text: '上六人部の活動記録をご覧ください。', url: location.href };
   if (navigator.share) {
@@ -324,4 +348,4 @@ setInterval(() => {
   if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt.getTime() >= 60_000) loadAll();
 }, 60_000);
 
-window._kmapReport = { map, state, loadAll, openDetail, focusMapOnItem };
+window._kmapReport = { map, state, loadAll, openDetail, focusMapOnItem, showAllItems };

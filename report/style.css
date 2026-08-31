@@ -71,6 +71,23 @@ h1 { margin: 0; font-size: clamp(21px, 4vw, 29px); line-height: 1.2; }
 
 .map-panel { position: relative; min-width: 0; background: #cddbd4; }
 #map { position: absolute; inset: 0; }
+.fit-all-button {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(23, 53, 44, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--green);
+  box-shadow: 0 2px 9px rgba(23, 53, 44, 0.18);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fit-all-button:active { transform: scale(0.97); background: #fff; }
 .map-caption {
   position: absolute;
   left: 50%;
