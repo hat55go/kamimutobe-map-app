@@ -32,6 +32,15 @@ test('一覧カードは詳細モーダルを開かず地図だけを移動す�
   assert.match(app, /scrollIntoView/);
 });
 
+test('全体表示ボタンは公開中の全ピンへ表示範囲を戻す', () => {
+  const html = read('report/index.html');
+  const app = read('report/app.js');
+  assert.match(html, /id="fit-all-button"/);
+  assert.match(app, /function showAllItems\(\)/);
+  assert.match(app, /map\.fitBounds\(bounds/);
+  assert.match(app, /fit-all-button'\)\.onclick = showAllItems/);
+});
+
 test('モバイル表示と地点固定マーカーを維持する', () => {
   const app = read('report/app.js');
   const css = read('report/style.css');
