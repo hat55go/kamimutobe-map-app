@@ -1,13 +1,14 @@
 [
   {
     "id": "seed-mitsumata",
-    "title": "三俣（みつまた）",
-    "category": "集落",
+    "title": "三俣（みまた）",
+    "category": "メモ",
     "text": "旧上六人部村の大字。かつて村役場が置かれていた。",
     "lat": 35.262417,
     "lng": 135.221695,
     "photos": [],
-    "source": ""
+    "source": "",
+    "updatedAt": "2026-08-31T04:41:14.186Z"
   },
   {
     "id": "seed-hagiwara",
