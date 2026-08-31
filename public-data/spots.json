@@ -188,5 +188,18 @@
     "photos": [],
     "source": "",
     "createdAt": "2026-08-28T01:33:30.304Z"
+  },
+  {
+    "id": "mtgrp5m6ljpj",
+    "title": "熊目撃注意看板",
+    "category": "メモ",
+    "text": "挿絵の熊がかわいい",
+    "lat": 35.25452964680677,
+    "lng": 135.21878242492676,
+    "photos": [
+      "mtgrxc9qmgwn.jpg"
+    ],
+    "source": "",
+    "createdAt": "2026-08-31T05:04:24.892Z"
   }
 ]
