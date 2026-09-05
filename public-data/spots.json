@@ -169,5 +169,18 @@
     "source": "",
     "createdAt": "2026-09-05T09:53:54.135Z",
     "updatedAt": "2026-09-05T09:58:49.028Z"
+  },
+  {
+    "id": "mto7oidnjmsq",
+    "title": "坂室公民館",
+    "category": "公共施設",
+    "text": "坂室の公民館",
+    "lat": 35.25166689905295,
+    "lng": 135.20269118249416,
+    "photos": [
+      "mto7pb8lzn2x.jpg"
+    ],
+    "source": "",
+    "createdAt": "2026-09-05T10:00:28.667Z"
   }
 ]
