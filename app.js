@@ -464,6 +464,8 @@ document.querySelectorAll('[data-hazard]').forEach((input) => {
 map.on('load', loadShelters);
 
 // ---- マーカー ----
+let markerHighlightTimer = null;
+
 function clearMarkers() {
   state.markers.forEach((mk) => mk.remove());
   state.markers = [];
@@ -478,6 +480,8 @@ function renderMarkers() {
       el.className = `marker marker-${pinType.id}`;
       el.title = `${pinType.label}: ${item.title}`;
       el.setAttribute('aria-label', `${pinType.label}: ${item.title}`);
+      el.dataset.recordKind = kind;
+      el.dataset.recordId = String(item.id);
       el.addEventListener('click', (e) => {
         e.stopPropagation(); // 地図クリック（追加メニュー）を発火させない
         openDetail(kind, item);
@@ -492,6 +496,45 @@ function renderMarkers() {
       state.markers.push(mk);
     }
   }
+}
+
+function highlightMarker(kind, item) {
+  const recordId = String(item.id);
+  const target = state.markers
+    .map((marker) => marker.getElement())
+    .find((element) => element.dataset.recordKind === kind
+      && element.dataset.recordId === recordId);
+  if (!target) return;
+
+  if (markerHighlightTimer) clearTimeout(markerHighlightTimer);
+  state.markers.forEach((marker) => marker.getElement().classList.remove('is-highlighted'));
+  // 同じカードを続けて押してもアニメーションを先頭から再生する。
+  void target.offsetWidth;
+  target.classList.add('is-highlighted');
+  markerHighlightTimer = setTimeout(() => {
+    target.classList.remove('is-highlighted');
+    markerHighlightTimer = null;
+  }, 2400);
+}
+
+function focusMapOnItem(kind, item) {
+  let highlighted = false;
+  let fallbackTimer = null;
+  const showHighlight = () => {
+    if (highlighted) return;
+    highlighted = true;
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    highlightMarker(kind, item);
+  };
+  map.once('moveend', showHighlight);
+  map.flyTo({
+    center: [item.lng, item.lat],
+    zoom: 15.2,
+    pitch: 55,
+    duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 800,
+    essential: true,
+  });
+  fallbackTimer = setTimeout(showHighlight, 1000);
 }
 
 // ---- 詳細ポップアップ ----
@@ -841,7 +884,7 @@ function renderList() {
       <div class="item-meta">${esc(meta.filter(Boolean).join(' ／ '))}</div>
       ${item.text ? `<div class="item-text">${esc(item.text)}</div>` : ''}`;
     li.onclick = () => {
-      map.flyTo({ center: [item.lng, item.lat], zoom: 15.2, pitch: 55 });
+      focusMapOnItem(kind, item);
       openDetail(kind, item);
       // スマホではシートを閉じて地図を見せる
       if (window.matchMedia('(max-width: 700px)').matches) {
@@ -1037,7 +1080,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=13').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=14').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 

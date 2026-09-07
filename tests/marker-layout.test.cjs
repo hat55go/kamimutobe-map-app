@@ -21,3 +21,12 @@ test('ピンは下端を座標にしてズーム中も滑らかに追従する',
   assert.match(app, /anchor:\s*'bottom'/);
   assert.match(app, /subpixelPositioning:\s*true/);
 });
+
+test('カード選択の強調はピン本体ではなく疑似要素だけを動かす', () => {
+  const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
+  const highlightRule = css.match(/\.marker\.is-highlighted::after\s*\{([^}]*)\}/);
+
+  assert.ok(highlightRule, 'highlight pseudo-element rule should exist');
+  assert.match(highlightRule[1], /animation:\s*marker-attention/);
+  assert.doesNotMatch(css, /\.marker\.is-highlighted\s*\{[^}]*transform/);
+});

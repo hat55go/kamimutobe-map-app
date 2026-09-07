@@ -40,6 +40,7 @@ const state = {
   markers: [],
   loadedAt: null,
 };
+let markerHighlightTimer = null;
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -155,6 +156,8 @@ function renderMarkers() {
       element.className = `report-marker report-marker-${type.id}`;
       element.title = item.title;
       element.setAttribute('aria-label', `${type.label}: ${item.title}`);
+      element.dataset.recordKind = kind;
+      element.dataset.recordId = String(item.id);
       element.onclick = (event) => {
         event.stopPropagation();
         openDetail(kind, item);
@@ -206,8 +209,43 @@ function cardHtml(kind, item) {
     </div>`;
 }
 
-function focusMapOnItem(item) {
-  map.flyTo({ center: [item.lng, item.lat], zoom: 15.2, pitch: 52, essential: true });
+function highlightMarker(kind, item) {
+  const recordId = String(item.id);
+  const target = state.markers
+    .map((marker) => marker.getElement())
+    .find((element) => element.dataset.recordKind === kind
+      && element.dataset.recordId === recordId);
+  if (!target) return;
+
+  if (markerHighlightTimer) clearTimeout(markerHighlightTimer);
+  state.markers.forEach((marker) => marker.getElement().classList.remove('is-highlighted'));
+  // 同じカードを続けて押してもアニメーションを先頭から再生する。
+  void target.offsetWidth;
+  target.classList.add('is-highlighted');
+  markerHighlightTimer = setTimeout(() => {
+    target.classList.remove('is-highlighted');
+    markerHighlightTimer = null;
+  }, 2400);
+}
+
+function focusMapOnItem(kind, item) {
+  let highlighted = false;
+  let fallbackTimer = null;
+  const showHighlight = () => {
+    if (highlighted) return;
+    highlighted = true;
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    highlightMarker(kind, item);
+  };
+  map.once('moveend', showHighlight);
+  map.flyTo({
+    center: [item.lng, item.lat],
+    zoom: 15.2,
+    pitch: 52,
+    duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 800,
+    essential: true,
+  });
+  fallbackTimer = setTimeout(showHighlight, 1000);
   if (window.matchMedia('(max-width: 760px)').matches) {
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     document.querySelector('.map-panel').scrollIntoView({ behavior, block: 'start' });
@@ -251,11 +289,11 @@ function renderCards() {
     card.className = `record-card ${item.photos?.length ? '' : 'no-photo'}`;
     card.tabIndex = 0;
     card.innerHTML = cardHtml(state.activeKind, item);
-    card.onclick = () => focusMapOnItem(item);
+    card.onclick = () => focusMapOnItem(state.activeKind, item);
     card.onkeydown = (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        focusMapOnItem(item);
+        focusMapOnItem(state.activeKind, item);
       }
     };
     wrap.appendChild(card);
