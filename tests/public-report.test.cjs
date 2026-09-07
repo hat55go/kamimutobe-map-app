@@ -33,7 +33,7 @@ test('一覧カードは詳細モーダルを開かず地図だけを移動す�
   const app = read('report/app.js');
   const renderCards = app.match(/function renderCards\(\)[\s\S]*?\n}\n\nconst detailBackdrop/);
   assert.ok(renderCards, 'renderCards block should be found');
-  assert.match(renderCards[0], /focusMapOnItem\(item\)/);
+  assert.match(renderCards[0], /focusMapOnItem\(state\.activeKind, item\)/);
   assert.doesNotMatch(renderCards[0], /openDetail\(/);
   assert.match(app, /scrollIntoView/);
 });
@@ -51,10 +51,34 @@ test('モバイル表示と地点固定マーカーを維持する', () => {
   const app = read('report/app.js');
   const css = read('report/style.css');
   assert.match(css, /@media \(max-width: 760px\)/);
-  assert.match(css, /height:\s*46svh/);
+  assert.match(css, /height:\s*52svh/);
   assert.match(css, /\.report-marker\s*\{[\s\S]*position:\s*absolute/);
   assert.match(app, /anchor:\s*['"]bottom['"]/);
   assert.match(app, /subpixelPositioning:\s*true/);
+});
+
+test('一覧カードで移動した後は対象ピンだけを控えめに強調する', () => {
+  const editorApp = read('app.js');
+  const reportApp = read('report/app.js');
+  const editorCss = read('style.css');
+  const reportCss = read('report/style.css');
+
+  for (const app of [editorApp, reportApp]) {
+    assert.match(app, /function highlightMarker\(kind, item\)/);
+    assert.match(app, /dataset\.recordKind = kind/);
+    assert.match(app, /dataset\.recordId = String\(item\.id\)/);
+    assert.match(app, /map\.once\('moveend', showHighlight\)/);
+  }
+  assert.match(editorCss, /\.marker\.is-highlighted::after/);
+  assert.match(reportCss, /\.report-marker\.is-highlighted::after/);
+  assert.match(reportCss, /@keyframes marker-attention/);
+});
+
+test('公開ページのヘッダーは省スペースで地図が残り画面を使う', () => {
+  const css = read('report/style.css');
+  assert.match(css, /grid-template-rows:\s*auto minmax\(0, 1fr\)/);
+  assert.match(css, /\.page-layout\s*\{[\s\S]*height:\s*100%/);
+  assert.match(css, /\.intro\s*\{\s*display:\s*none/);
 });
 
 test('編集画面は公開対象を明示的に選ぶ', () => {
