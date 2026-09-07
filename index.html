@@ -11,7 +11,7 @@
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
   <aside id="sidebar">
@@ -26,12 +26,17 @@
     <nav id="tabs">
       <button class="tab active" data-tab="notes">📍 メモ <span id="notes-count" class="count"></span></button>
       <button class="tab" data-tab="spots">📍 場所図鑑 <span id="spots-count" class="count"></span></button>
+      <button class="tab" data-tab="people">👥 名簿 <span id="people-count" class="count"></span></button>
     </nav>
 
     <div id="search-row">
       <input id="search" type="search" placeholder="検索（タイトル・人・本文）">
     </div>
     <div id="filter-chips"></div>
+    <div id="people-toolbar" class="hidden">
+      <button type="button" id="person-add">＋ 人物を追加</button>
+      <p>名簿・顔写真・人物タグは公開ページには表示されません。</p>
+    </div>
 
     <ul id="item-list"></ul>
   </aside>
@@ -118,9 +123,14 @@
       <label>カテゴリ
         <select name="category"></select>
       </label>
-      <label id="people-field">会った人（カンマ区切り）
-        <input name="people" placeholder="例: 田中さん, 佐藤さん" autocomplete="off">
-      </label>
+      <fieldset id="people-field">
+        <legend>タグ付けする人物</legend>
+        <div id="people-options"></div>
+        <label class="people-other">名簿に未登録の名前
+          <input name="peopleOther" placeholder="例: お名前不明の方" autocomplete="off">
+        </label>
+        <p class="form-help">名簿に登録した人物は、ここから選ぶだけで関連ログにまとまります。</p>
+      </fieldset>
       <label>メモ
         <textarea name="text" rows="4"></textarea>
       </label>
@@ -136,7 +146,7 @@
         <input name="published" type="checkbox">
         <span>
           <strong>活動報告ページに公開する</strong>
-          <small>タイトル・日付・カテゴリ・メモ・位置・写真・出典が公開されます。会った人の欄は公開されません。</small>
+          <small>タイトル・日付・カテゴリ・メモ・位置・写真・出典が公開されます。人物タグ・名簿・顔写真は公開されません。</small>
         </span>
       </label>
       <div class="form-buttons">
@@ -146,11 +156,42 @@
     </form>
   </div>
 
+  <!-- 人物名簿の詳細 -->
+  <div id="person-detail-backdrop" class="entity-backdrop hidden">
+    <section id="person-detail" class="entity-panel" role="dialog" aria-modal="true" aria-labelledby="person-detail-name">
+      <button type="button" id="person-detail-close" class="entity-close" aria-label="閉じる">×</button>
+      <div id="person-detail-content"></div>
+    </section>
+  </div>
+
+  <!-- 人物名簿の追加・編集 -->
+  <div id="person-form-backdrop" class="entity-backdrop hidden">
+    <form id="person-form" class="entity-panel">
+      <h2 id="person-form-title">人物を追加</h2>
+      <label>名前 <span class="req">必須</span>
+        <input name="name" required autocomplete="off">
+      </label>
+      <label>関連・説明
+        <textarea name="description" rows="5" placeholder="所属、役割、話した内容など"></textarea>
+      </label>
+      <label>顔写真（任意・非公開）
+        <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif">
+      </label>
+      <p id="person-photo-status" class="form-help" aria-live="polite">iPhoneのHEIC写真にも対応しています。</p>
+      <div id="person-photo-previews"></div>
+      <div class="form-buttons">
+        <button type="button" id="person-form-cancel">キャンセル</button>
+        <button type="submit" id="person-form-save">保存</button>
+      </div>
+    </form>
+  </div>
+
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="record-merge.js?v=10"></script>
+  <script src="record-merge.js?v=11"></script>
+  <script src="people-directory.js?v=1"></script>
   <script src="pin-types.js?v=11"></script>
   <script src="image-utils.js?v=10"></script>
   <script src="storage.js?v=10"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

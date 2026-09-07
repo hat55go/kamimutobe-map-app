@@ -2,19 +2,23 @@
 
 // ---- 定数 ----
 const CENTER = [135.207, 35.250]; // 上六人部（土師川中流域）の中心付近
-const KIND_LABEL = { notes: 'メモ', spots: '場所' };
+const KIND_LABEL = { notes: 'メモ', spots: '場所', people: '人物' };
 const DEMO_MODE = ['localhost', '127.0.0.1'].includes(location.hostname)
   && new URLSearchParams(location.search).has('demo');
 const DEMO_DATA = {
   notes: [
-    { id: 'demo-note', title: '川沿いの観察メモ', category: '気づき', date: '2026-08-28', text: '現地で気づいたことを記録', lat: 35.252, lng: 135.205 },
+    { id: 'demo-note', title: '川沿いの観察メモ', category: '気づき', date: '2026-08-28', text: '現地で気づいたことを記録', lat: 35.252, lng: 135.205, peopleIds: ['demo-person-1'], people: ['田中さん'] },
   ],
   spots: [
     { id: 'demo-shop', title: '地域のお店', category: 'お店', text: 'お店の記録例', lat: 35.254, lng: 135.212 },
-    { id: 'demo-facility', title: '地域交流館', category: '施設', text: '公共施設の記録例', lat: 35.250, lng: 135.208 },
+    { id: 'demo-facility', title: '地域交流館', category: '施設', text: '公共施設の記録例', lat: 35.250, lng: 135.208, peopleIds: ['demo-person-2'], people: ['佐藤さん'] },
     { id: 'demo-shrine', title: '地域の神社', category: '神社仏閣', text: '寺社仏閣の記録例', lat: 35.251, lng: 135.214 },
     { id: 'demo-nature', title: '自然観察スポット', category: '自然', text: '自然スポットの記録例', lat: 35.248, lng: 135.202 },
     { id: 'demo-hidden', title: '非表示のテストピン', category: 'その他', text: '復元確認用', lat: 35.251, lng: 135.210, archivedAt: '2026-08-28T00:00:00.000Z' },
+  ],
+  people: [
+    { id: 'demo-person-1', name: '田中さん', description: '地域の歴史に詳しい方。川沿いで話を伺いました。', photos: [] },
+    { id: 'demo-person-2', name: '佐藤さん', description: '地域交流館でお会いした方。', photos: [] },
   ],
 };
 
@@ -22,6 +26,7 @@ const DEMO_DATA = {
 const state = {
   notes: [],
   spots: [],
+  people: [],
   activeTab: 'notes',
   query: '',
   categoryFilter: null, // null = すべて
@@ -60,7 +65,7 @@ function resolvePhotos(root) {
 // 書き込みは毎回リポジトリの最新を読んでから更新するので、他端末の変更を踏み潰さない。
 async function api(path, method = 'GET', body, baseItem = null) {
   const { kind, id } = kmapRecordMerge.parseApiPath(path);
-  const label = kind === 'notes' ? '記録' : '場所';
+  const label = KIND_LABEL[kind] || 'データ';
 
   if (method === 'GET') {
     const { items, fromCache } = await kmapStorage.loadCollection(kind);
@@ -77,7 +82,7 @@ async function api(path, method = 'GET', body, baseItem = null) {
     if (alreadySaved) return alreadySaved; // 応答だけ途切れた後の再保存でも重複させない
     const item = { ...body, id: itemId, createdAt: new Date().toISOString() };
     items.push(item);
-    await kmapStorage.saveCollection(kind, items, `${kind}: add ${item.title}`);
+    await kmapStorage.saveCollection(kind, items, `${kind}: add ${item.title || item.name}`);
     return item;
   }
 
@@ -87,21 +92,21 @@ async function api(path, method = 'GET', body, baseItem = null) {
   if (method === 'PUT') {
     const merged = kmapRecordMerge.mergeItem(baseItem, items[index], body);
     items[index] = merged;
-    await kmapStorage.saveCollection(kind, items, `${kind}: update ${merged.title}`);
+    await kmapStorage.saveCollection(kind, items, `${kind}: update ${merged.title || merged.name}`);
     return merged;
   }
 
   if (method === 'DELETE') {
     const archived = kmapRecordMerge.archiveItem(baseItem, items[index]);
     items[index] = archived;
-    await kmapStorage.saveCollection(kind, items, `${kind}: archive ${archived.title}`);
+    await kmapStorage.saveCollection(kind, items, `${kind}: archive ${archived.title || archived.name}`);
     return archived;
   }
 
   if (method === 'RESTORE') {
     const restored = kmapRecordMerge.restoreItem(baseItem, items[index]);
     items[index] = restored;
-    await kmapStorage.saveCollection(kind, items, `${kind}: restore ${restored.title}`);
+    await kmapStorage.saveCollection(kind, items, `${kind}: restore ${restored.title || restored.name}`);
     return restored;
   }
 
@@ -537,6 +542,26 @@ function focusMapOnItem(kind, item) {
   fallbackTimer = setTimeout(showHighlight, 1000);
 }
 
+function peopleTagsHtml(item) {
+  const tags = kmapPeople.resolveRecordPeople(item, state.people);
+  if (!tags.length) return '';
+  return `<div class="person-tags" aria-label="タグ付けされた人物">${tags.map((tag) => (
+    tag.registered
+      ? `<button type="button" class="person-tag" data-person-id="${esc(tag.id)}">👤 ${esc(tag.name)}</button>`
+      : `<span class="person-tag is-unregistered">👤 ${esc(tag.name)}</span>`
+  )).join('')}</div>`;
+}
+
+function bindPersonTagButtons(root) {
+  root.querySelectorAll('[data-person-id]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const person = state.people.find((candidate) => String(candidate.id) === button.dataset.personId);
+      if (person) openPersonDetail(person);
+    });
+  });
+}
+
 // ---- 詳細ポップアップ ----
 let activePopup = null;
 
@@ -544,8 +569,7 @@ function openDetail(kind, item) {
   if (activePopup) activePopup.remove();
   const pinType = kmapPinTypes.typeFor(kind, item.category);
   const div = document.createElement('div');
-  const peopleHtml = kind === 'notes' && item.people?.length
-    ? `<p class="popup-meta">👥 ${esc(item.people.join('、'))}</p>` : '';
+  const peopleHtml = peopleTagsHtml(item);
   const dateHtml = kind === 'notes' && item.date
     ? `<p class="popup-meta">📅 ${esc(item.date)}</p>` : '';
   const publicationHtml = item.visibility === 'public'
@@ -566,6 +590,7 @@ function openDetail(kind, item) {
       <button data-act="delete" class="danger">🗑 非表示</button>
     </div>`;
   resolvePhotos(div);
+  bindPersonTagButtons(div);
   div.querySelectorAll('.popup-photos img').forEach((img) => {
     img.onclick = () => img.src && window.open(img.src); // クリックで原寸表示
   });
@@ -732,12 +757,25 @@ function openForm(kind, latlng, existing = null, initialCategory = null) {
 
   const isNote = kind === 'notes';
   document.getElementById('date-field').style.display = isNote ? '' : 'none';
-  document.getElementById('people-field').style.display = isNote ? '' : 'none';
+  document.getElementById('people-field').style.display = '';
 
   form.elements.title.value = existing?.title || '';
   form.elements.date.value = existing?.date || today();
   form.elements.category.value = existingType?.category || initialCategory || formTypes[0].category;
-  form.elements.people.value = existing?.people?.join(', ') || '';
+  const tags = kmapPeople.editableTags(existing || {}, state.people);
+  const peopleOptions = document.getElementById('people-options');
+  const taggablePeople = state.people.filter((person) => (
+    !person.archivedAt || tags.selectedIds.includes(String(person.id))
+  ));
+  peopleOptions.innerHTML = taggablePeople.length
+    ? taggablePeople.map((person) => `
+      <label class="person-option">
+        <input type="checkbox" name="peopleIds" value="${esc(person.id)}"
+          ${tags.selectedIds.includes(String(person.id)) ? 'checked' : ''}>
+        <span>👤 ${esc(person.name)}${person.archivedAt ? '（名簿では非表示）' : ''}</span>
+      </label>`).join('')
+    : '<p class="people-empty">名簿はまだ空です。保存後、名簿タブから人物を追加できます。</p>';
+  form.elements.peopleOther.value = tags.unmatchedNames.join('、');
   form.elements.text.value = existing?.text || '';
   form.elements.source.value = existing?.source || '';
   form.elements.published.checked = existing?.visibility === 'public';
@@ -776,9 +814,14 @@ form.addEventListener('submit', async (e) => {
   if (!existing) body.id = draftId;
   if (kind === 'notes') {
     body.date = form.elements.date.value || today();
-    body.people = form.elements.people.value
-      .split(/[,、]/).map((s) => s.trim()).filter(Boolean);
   }
+  const selectedPeopleIds = [...form.querySelectorAll('[name="peopleIds"]:checked')]
+    .map((input) => input.value);
+  Object.assign(body, kmapPeople.buildTagData(
+    selectedPeopleIds,
+    form.elements.peopleOther.value,
+    state.people,
+  ));
   const saveBtn = document.getElementById('form-save');
   const originalLabel = saveBtn.textContent;
   saveBtn.disabled = true;
@@ -818,26 +861,242 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
+// ---- 人物名簿 ----
+const personDetailBackdrop = document.getElementById('person-detail-backdrop');
+const personDetailContent = document.getElementById('person-detail-content');
+const personFormBackdrop = document.getElementById('person-form-backdrop');
+const personForm = document.getElementById('person-form');
+let personFormContext = null;
+let keepPersonPhotos = [];
+let pendingPersonPhoto = null;
+
+function personAvatarHtml(person, className = '') {
+  const photo = person.photos?.[0];
+  if (photo) return `<img class="person-avatar ${className}" data-photo="${esc(photo)}" alt="${esc(person.name)}の写真">`;
+  return `<span class="person-avatar person-initial ${className}" aria-hidden="true">${esc(String(person.name || '人').slice(0, 1))}</span>`;
+}
+
+function logDate(kind, item) {
+  if (kind === 'notes' && item.date) return item.date;
+  const timestamp = item.updatedAt || item.createdAt;
+  return timestamp ? new Date(timestamp).toLocaleDateString('ja-JP') : '日付なし';
+}
+
+function closePersonDetail() {
+  personDetailBackdrop.classList.add('hidden');
+}
+
+function openRecordFromPersonLog(kind, item) {
+  closePersonDetail();
+  state.activeTab = kind;
+  state.categoryFilter = null;
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.tab === kind);
+  });
+  renderSidebar();
+  focusMapOnItem(kind, item);
+  openDetail(kind, item);
+}
+
+function openPersonDetail(person) {
+  const logs = kmapPeople.logsForPerson(person, state.notes, state.spots);
+  const recentHtml = logs.length
+    ? logs.slice(0, 20).map(({ kind, item }) => `
+      <button type="button" class="person-log" data-log-kind="${kind}" data-log-id="${esc(item.id)}">
+        <span>${kind === 'notes' ? '📍' : '🗺️'} ${esc(item.title)}</span>
+        <time>${esc(logDate(kind, item))}</time>
+      </button>`).join('')
+    : '<p class="person-log-empty">この人物をタグ付けした記録はまだありません。</p>';
+  personDetailContent.innerHTML = `
+    <div class="person-detail-head">
+      ${personAvatarHtml(person, 'is-large')}
+      <div>
+        <p class="privacy-badge">🔒 編集者のみ</p>
+        <h2 id="person-detail-name">${esc(person.name)}</h2>
+        <p class="person-log-count">関連ログ ${logs.length}件</p>
+      </div>
+    </div>
+    ${person.description ? `<p class="person-description">${esc(person.description)}</p>` : '<p class="person-description is-empty">説明はまだありません。</p>'}
+    <h3>直近のログ</h3>
+    <div class="person-logs">${recentHtml}</div>
+    <div class="person-detail-actions">
+      <button type="button" data-person-act="edit">✏️ 編集</button>
+      ${person.archivedAt ? '' : '<button type="button" data-person-act="archive" class="danger">名簿から非表示</button>'}
+    </div>`;
+  resolvePhotos(personDetailContent);
+  personDetailContent.querySelector('.person-avatar[src]')?.addEventListener('click', (event) => {
+    if (event.currentTarget.src) window.open(event.currentTarget.src);
+  });
+  personDetailContent.querySelectorAll('.person-log').forEach((button) => {
+    button.onclick = () => {
+      const kind = button.dataset.logKind;
+      const item = state[kind].find((candidate) => String(candidate.id) === button.dataset.logId);
+      if (item) openRecordFromPersonLog(kind, item);
+    };
+  });
+  personDetailContent.querySelector('[data-person-act="edit"]').onclick = () => {
+    closePersonDetail();
+    openPersonForm(person);
+  };
+  const archiveButton = personDetailContent.querySelector('[data-person-act="archive"]');
+  if (archiveButton) {
+    archiveButton.onclick = async () => {
+      if (!confirm(`「${person.name}」を名簿から非表示にしますか？\n人物情報と過去のタグは削除されず、あとで戻せます。`)) return;
+      archiveButton.disabled = true;
+      try {
+        await api(`/api/people/${person.id}`, 'DELETE', null, person);
+        closePersonDetail();
+        await loadAll();
+      } catch (err) {
+        alert(`名簿から非表示にできませんでした: ${err.message}`);
+      } finally {
+        archiveButton.disabled = false;
+      }
+    };
+  }
+  personDetailBackdrop.classList.remove('hidden');
+}
+
+function setPersonPhotoStatus(message, isError = false) {
+  const element = document.getElementById('person-photo-status');
+  element.textContent = message;
+  element.classList.toggle('ng', isError);
+}
+
+function renderPersonPhotoPreviews() {
+  const wrap = document.getElementById('person-photo-previews');
+  wrap.innerHTML = '';
+  keepPersonPhotos.forEach((photo, index) => {
+    const div = document.createElement('div');
+    div.className = 'photo-thumb';
+    div.innerHTML = `<img data-photo="${esc(photo)}" alt="現在の顔写真"><button type="button" title="この写真を外す">×</button>`;
+    div.querySelector('button').onclick = () => {
+      keepPersonPhotos.splice(index, 1);
+      renderPersonPhotoPreviews();
+    };
+    wrap.appendChild(div);
+  });
+  resolvePhotos(wrap);
+}
+
+function openPersonForm(existing = null) {
+  personFormContext = { existing, draftId: existing ? null : genId() };
+  document.getElementById('person-form-title').textContent = `人物を${existing ? '編集' : '追加'}`;
+  personForm.elements.name.value = existing?.name || '';
+  personForm.elements.description.value = existing?.description || '';
+  personForm.elements.photo.value = '';
+  keepPersonPhotos = existing?.photos ? [...existing.photos] : [];
+  pendingPersonPhoto = null;
+  setPersonPhotoStatus('顔写真は非公開リポジトリだけに保存されます。HEICにも対応しています。');
+  renderPersonPhotoPreviews();
+  personFormBackdrop.classList.remove('hidden');
+  personForm.elements.name.focus();
+}
+
+function closePersonForm() {
+  if (pendingPersonPhoto && !confirm(
+    '写真は保存先へアップロード済みですが、名簿への反映が完了していません。編集を閉じますか？',
+  )) return;
+  personFormBackdrop.classList.add('hidden');
+  personFormContext = null;
+}
+
+personForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const { existing, draftId } = personFormContext;
+  const name = personForm.elements.name.value.trim();
+  const duplicate = kmapPeople.activePeople(state.people).find((person) => (
+    String(person.id) !== String(existing?.id || '')
+    && kmapPeople.normalizeName(person.name) === kmapPeople.normalizeName(name)
+  ));
+  if (duplicate) {
+    alert(`「${duplicate.name}」はすでに名簿にあります。既存の人物を編集してください。`);
+    return;
+  }
+
+  const saveButton = document.getElementById('person-form-save');
+  const originalLabel = saveButton.textContent;
+  saveButton.disabled = true;
+  try {
+    const file = personForm.elements.photo.files[0];
+    if (file && !pendingPersonPhoto) {
+      saveButton.textContent = '写真を保存中…';
+      setPersonPhotoStatus(`「${file.name}」を変換・保存しています…`);
+      const blob = await kmapImages.compressImage(file);
+      pendingPersonPhoto = await kmapStorage.uploadPhoto(blob, `${genId()}.jpg`);
+      personForm.elements.photo.value = '';
+    }
+    saveButton.textContent = '保存中…';
+    const body = {
+      name,
+      description: personForm.elements.description.value.trim(),
+      photos: pendingPersonPhoto
+        ? [pendingPersonPhoto, ...keepPersonPhotos.filter((photo) => photo !== pendingPersonPhoto)]
+        : [...keepPersonPhotos],
+    };
+    if (!existing) body.id = draftId;
+    if (existing) await api(`/api/people/${existing.id}`, 'PUT', body, existing);
+    else await api('/api/people', 'POST', body);
+    pendingPersonPhoto = null;
+    closePersonForm();
+    await loadAll();
+  } catch (err) {
+    setPersonPhotoStatus(
+      pendingPersonPhoto
+        ? '写真は保存済みですが、名簿への反映は未完了です。もう一度「保存」を押してください。'
+        : err.message,
+      true,
+    );
+    alert(`人物を保存できませんでした: ${err.message}`);
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalLabel;
+  }
+});
+
+document.getElementById('person-add').onclick = () => openPersonForm();
+document.getElementById('person-form-cancel').onclick = closePersonForm;
+personFormBackdrop.addEventListener('click', (event) => {
+  if (event.target === personFormBackdrop) closePersonForm();
+});
+document.getElementById('person-detail-close').onclick = closePersonDetail;
+personDetailBackdrop.addEventListener('click', (event) => {
+  if (event.target === personDetailBackdrop) closePersonDetail();
+});
+
 // ---- サイドバー ----
 function filteredItems() {
   const kind = state.activeTab;
   const q = state.query.toLowerCase();
   let items = state[kind].filter((it) => {
     if (it.archivedAt) return false;
-    if (state.categoryFilter && kmapPinTypes.typeIdFor(kind, it.category) !== state.categoryFilter) return false;
+    if (kind !== 'people' && state.categoryFilter
+      && kmapPinTypes.typeIdFor(kind, it.category) !== state.categoryFilter) return false;
     if (!q) return true;
-    const hay = [it.title, it.text, ...(it.people || [])].join(' ').toLowerCase();
+    const taggedNames = kind === 'people'
+      ? []
+      : kmapPeople.resolveRecordPeople(it, state.people).map((tag) => tag.name);
+    const hay = kind === 'people'
+      ? [it.name, it.description].join(' ').toLowerCase()
+      : [it.title, it.text, ...(it.people || []), ...taggedNames].join(' ').toLowerCase();
     return hay.includes(q);
   });
   if (kind === 'notes') {
     items = [...items].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } else if (kind === 'people') {
+    items = [...items].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ja'));
   }
   return items;
 }
 
 function renderChips() {
   const wrap = document.getElementById('filter-chips');
+  const peopleToolbar = document.getElementById('people-toolbar');
   wrap.innerHTML = '';
+  const isPeople = state.activeTab === 'people';
+  wrap.classList.toggle('hidden', isPeople);
+  peopleToolbar.classList.toggle('hidden', !isPeople);
+  if (isPeople) return;
   const all = document.createElement('button');
   all.className = `chip ${state.categoryFilter === null ? 'active' : ''}`;
   all.textContent = 'すべて';
@@ -854,6 +1113,28 @@ function renderChips() {
   }
 }
 
+function renderPeopleList(list, people) {
+  for (const person of people) {
+    const logs = kmapPeople.logsForPerson(person, state.notes, state.spots);
+    const latest = logs[0];
+    const li = document.createElement('li');
+    li.className = 'person-card';
+    li.innerHTML = `
+      ${personAvatarHtml(person)}
+      <div class="person-card-body">
+        <div class="item-top">
+          <span class="item-title">${esc(person.name)}</span>
+          <span class="person-log-count">${logs.length}件</span>
+        </div>
+        ${person.description ? `<div class="item-text">${esc(person.description)}</div>` : ''}
+        <div class="item-meta">${latest ? `直近: ${esc(logDate(latest.kind, latest.item))}・${esc(latest.item.title)}` : '関連ログはまだありません'}</div>
+      </div>`;
+    resolvePhotos(li);
+    li.onclick = () => openPersonDetail(person);
+    list.appendChild(li);
+  }
+}
+
 function renderList() {
   const kind = state.activeTab;
   const list = document.getElementById('item-list');
@@ -865,15 +1146,21 @@ function renderList() {
     li.style.cursor = 'default';
     li.textContent = kind === 'notes'
       ? 'まだ記録がありません。地図をクリックして最初の記録を残しましょう。'
-      : '該当する場所がありません。';
+      : kind === 'people'
+        ? '名簿はまだ空です。「＋ 人物を追加」から登録できます。'
+        : '該当する場所がありません。';
     list.appendChild(li);
+    return;
+  }
+  if (kind === 'people') {
+    renderPeopleList(list, items);
     return;
   }
   for (const item of items) {
     const pinType = kmapPinTypes.typeFor(kind, item.category);
     const li = document.createElement('li');
     const meta = kind === 'notes'
-      ? [item.date, item.people?.length ? `👥 ${item.people.join('、')}` : '']
+      ? [item.date]
       : [`${pinType.icon} ${pinType.label}`];
     li.innerHTML = `
       <div class="item-top">
@@ -882,7 +1169,9 @@ function renderList() {
         ${item.visibility === 'public' ? '<span class="publication-badge">🌐 公開中</span>' : ''}
       </div>
       <div class="item-meta">${esc(meta.filter(Boolean).join(' ／ '))}</div>
+      ${peopleTagsHtml(item)}
       ${item.text ? `<div class="item-text">${esc(item.text)}</div>` : ''}`;
+    bindPersonTagButtons(li);
     li.onclick = () => {
       focusMapOnItem(kind, item);
       openDetail(kind, item);
@@ -899,8 +1188,10 @@ function renderList() {
 function renderSidebar() {
   const notesCount = kmapPinTypes.activeItems(state.notes).length;
   const spotsCount = kmapPinTypes.activeItems(state.spots).length;
+  const peopleCount = kmapPeople.activePeople(state.people).length;
   document.getElementById('notes-count').textContent = notesCount || '';
   document.getElementById('spots-count').textContent = spotsCount || '';
+  document.getElementById('people-count').textContent = peopleCount || '';
   renderChips();
   renderList();
 }
@@ -911,26 +1202,27 @@ const trashBackdrop = document.getElementById('trash-backdrop');
 function renderTrash() {
   const list = document.getElementById('trash-list');
   list.innerHTML = '';
-  const archived = ['notes', 'spots'].flatMap((kind) => state[kind]
+  const archived = ['notes', 'spots', 'people'].flatMap((kind) => state[kind]
     .filter((item) => item.archivedAt)
     .map((item) => ({ kind, item })));
 
   if (!archived.length) {
     const li = document.createElement('li');
     li.className = 'trash-empty';
-    li.textContent = '非表示にしたピンはありません。';
+    li.textContent = '非表示にした記録・場所・人物はありません。';
     list.appendChild(li);
     return;
   }
 
   archived.sort((a, b) => (b.item.archivedAt || '').localeCompare(a.item.archivedAt || ''));
   for (const { kind, item } of archived) {
-    const pinType = kmapPinTypes.typeFor(kind, item.category);
+    const icon = kind === 'people' ? '👤' : kmapPinTypes.typeFor(kind, item.category).icon;
+    const title = item.title || item.name;
     const li = document.createElement('li');
     li.innerHTML = `
-      <div><strong>${pinType.icon} ${esc(item.title)}</strong><br>
+      <div><strong>${icon} ${esc(title)}</strong><br>
       <span>${new Date(item.archivedAt).toLocaleString('ja-JP')}</span></div>
-      <button type="button">地図へ戻す</button>`;
+      <button type="button">${kind === 'people' ? '名簿へ戻す' : '地図へ戻す'}</button>`;
     li.querySelector('button').onclick = async () => {
       const button = li.querySelector('button');
       button.disabled = true;
@@ -963,6 +1255,9 @@ document.querySelectorAll('.tab').forEach((tab) => {
     tab.classList.add('active');
     state.activeTab = tab.dataset.tab;
     state.categoryFilter = null;
+    document.getElementById('search').placeholder = state.activeTab === 'people'
+      ? '名簿を検索（名前・説明）'
+      : '検索（タイトル・人・本文）';
     renderSidebar();
   };
 });
@@ -999,11 +1294,14 @@ async function loadAll() {
   if (DEMO_MODE) {
     state.notes = DEMO_DATA.notes.map((item) => ({ ...item }));
     state.spots = DEMO_DATA.spots.map((item) => ({ ...item }));
+    state.people = DEMO_DATA.people.map((item) => ({ ...item }));
     renderMarkers();
     renderSidebar();
     return;
   }
-  [state.notes, state.spots] = await Promise.all([api('/api/notes'), api('/api/spots')]);
+  [state.notes, state.spots, state.people] = await Promise.all([
+    api('/api/notes'), api('/api/spots'), api('/api/people'),
+  ]);
   renderMarkers();
   renderSidebar();
 }

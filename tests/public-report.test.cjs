@@ -13,6 +13,7 @@ test('公開ページは読み取り専用で編集用credentialを要求しな�
   const app = read('report/app.js');
   assert.doesNotMatch(html, /アクセストークン|setup-form|item-form/);
   assert.doesNotMatch(app, /api\.github\.com|method:\s*['"](?:PUT|POST|DELETE)/);
+  assert.doesNotMatch(app, /people\.json|peopleIds/);
   assert.match(html, /noindex,nofollow/);
 });
 
@@ -96,7 +97,16 @@ test('公開データの件数が一致し、非公開フィールドを含ま�
   assert.equal(spots.length, meta.counts.spots);
   for (const item of [...notes, ...spots]) {
     assert.equal('people' in item, false);
+    assert.equal('peopleIds' in item, false);
     assert.equal('visibility' in item, false);
     assert.equal('archivedAt' in item, false);
   }
+});
+
+test('人物名簿は編集画面だけに置き、公開除外を画面上でも明記する', () => {
+  const html = read('index.html');
+  const reportHtml = read('report/index.html');
+  assert.match(html, /data-tab="people"/);
+  assert.match(html, /人物タグ・名簿・顔写真は公開されません/);
+  assert.doesNotMatch(reportHtml, /data-tab="people"|人物名簿|person-form/);
 });

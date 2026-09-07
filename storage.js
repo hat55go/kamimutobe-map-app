@@ -114,7 +114,7 @@ async function writeFile(path, base64Content, message) {
   return json;
 }
 
-// ---- コレクション（notes / spots） ----
+// ---- コレクション（notes / spots / people） ----
 const pathOf = (kind) => `data/${kind}.json`;
 
 function readCache() {
@@ -148,6 +148,12 @@ async function loadCollection(kind) {
     if (cached && networkUnavailable) {
       store.online = false;
       return { items: cached, fromCache: true };
+    }
+    // 名簿機能追加後、まだ一度もpeople.jsonを取得していない端末でも、
+    // 従来のメモ・場所キャッシュまで開けなくならないよう空の名簿で続行する。
+    if (kind === 'people' && networkUnavailable) {
+      store.online = false;
+      return { items: [], fromCache: true };
     }
     throw err;
   }
