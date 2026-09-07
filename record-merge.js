@@ -87,7 +87,7 @@
   }
 
   function parseApiPath(path) {
-    const match = path.match(/^\/api\/(notes|spots)(?:\/([^/]+))?$/);
+    const match = path.match(/^\/api\/(notes|spots|people)(?:\/([^/]+))?$/);
     if (!match) throw new Error(`不正なパス: ${path}`);
     return { kind: match[1], id: match[2] ? decodeURIComponent(match[2]) : null };
   }

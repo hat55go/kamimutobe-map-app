@@ -79,3 +79,10 @@ test('初期地点のハイフン付きIDを編集パスとして受け付ける
     id: 'seed-ikuno',
   });
 });
+
+test('人物名簿のIDを編集パスとして受け付ける', () => {
+  assert.deepEqual(parseApiPath('/api/people/person-1'), {
+    kind: 'people',
+    id: 'person-1',
+  });
+});
