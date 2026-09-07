@@ -1,11 +1,11 @@
 // アプリ本体をキャッシュして、圏外・機内モードでも起動できるようにする。
 // 記録データは localStorage 側のキャッシュを app.js が使うので、ここでは扱わない。
-const CACHE = 'kamimutobe-map-v15';
+const CACHE = 'kamimutobe-map-v16';
 const ASSETS = [
   './',
   './index.html',
   './style.css?v=12',
-  './app.js?v=13',
+  './app.js?v=14',
   './storage.js?v=10',
   './record-merge.js?v=11',
   './people-directory.js?v=1',
