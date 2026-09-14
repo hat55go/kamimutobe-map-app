@@ -74,13 +74,16 @@
   {
     "id": "mtca2m9s5iv9",
     "title": "池田公民館",
-    "category": "施設",
+    "category": "公共施設",
     "text": "池田地域の公民館。協力隊としての初自主企画「スマホなんでも相談カフェ」の記念すべき第一回開催場所(2026.08.28)",
     "lat": 35.258959916523935,
     "lng": 135.19569866359234,
-    "photos": [],
+    "photos": [
+      "mu0ullij1ni0.jpg"
+    ],
     "source": "",
-    "createdAt": "2026-08-28T01:33:30.304Z"
+    "createdAt": "2026-08-28T01:33:30.304Z",
+    "updatedAt": "2026-09-14T06:14:39.834Z"
   },
   {
     "id": "mtgslza1g1l5",
@@ -237,5 +240,25 @@
     ],
     "source": "",
     "createdAt": "2026-09-14T02:09:53.763Z"
+  },
+  {
+    "id": "mu0ug83stcfk",
+    "title": "北向地蔵尊",
+    "category": "寺社仏閣",
+    "text": "宝永三年(1706)に建立。珍しい北向子育地蔵尊として、住民の暮らしや、京街道の旅人の安全を守っている。",
+    "lat": 35.259247374676136,
+    "lng": 135.1956671476364,
+    "photos": [
+      "mu0uke9ty3ab.jpg",
+      "mu0ukhel9j14.jpg",
+      "mu0ukk7q7mp2.jpg",
+      "mu0uknh21ria.jpg",
+      "mu0ukqqnldpl.jpg",
+      "mu0uktome9p2.jpg",
+      "mu0ukwis6w4y.jpg",
+      "mu0ukzgerj4p.jpg"
+    ],
+    "source": "",
+    "createdAt": "2026-09-14T06:14:10.804Z"
   }
 ]
