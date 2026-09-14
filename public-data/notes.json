@@ -281,5 +281,35 @@
     "source": "",
     "date": "2026-09-14",
     "createdAt": "2026-09-14T05:51:38.452Z"
+  },
+  {
+    "id": "mu0ttl7vh4sq",
+    "title": "何かの施設跡",
+    "category": "メモ",
+    "text": "何かの施設跡。野菜の無人販売をしていた形勢あり。建設系な気がする。",
+    "lat": 35.2598847068287,
+    "lng": 135.2194932103157,
+    "photos": [
+      "mu0tvix6zmuk.jpg",
+      "mu0tvm4zvwvl.jpg",
+      "mu0tvp99xrsn.jpg"
+    ],
+    "source": "",
+    "date": "2026-09-14",
+    "createdAt": "2026-09-14T05:54:31.266Z"
+  },
+  {
+    "id": "mu0tw75adlrz",
+    "title": "いい感じの山道",
+    "category": "メモ",
+    "text": "ギリ車で行けそうな山道。四駆の友達来た際に攻めたい。",
+    "lat": 35.25999749876671,
+    "lng": 135.21928399801254,
+    "photos": [
+      "mu0ty1dxddux.jpg"
+    ],
+    "source": "",
+    "date": "2026-09-14",
+    "createdAt": "2026-09-14T05:56:20.363Z"
   }
 ]
