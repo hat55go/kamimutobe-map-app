@@ -656,6 +656,15 @@ body {
 #person-form input, #person-form textarea { display: block; width: 100%; margin-top: 4px; padding: 8px 9px; border: 1px solid #ced4da; border-radius: 6px; font: inherit; font-size: 14px; }
 #person-form .req { color: #c92a2a; font-size: 11px; }
 #person-form-save { border-color: #1b4332; background: #1b4332; color: #fff; }
+#person-membership { min-width: 0; margin: 0 0 16px; padding: 10px; border: 1px solid #e1e5e2; border-radius: 8px; }
+#person-membership legend { padding: 0 5px; color: #495057; font-size: 13px; }
+.is-council-member { --membership-bg: #fff1dd; --membership-color: #9a4300; --membership-accent: #df7300; --membership-border: #edb77c; }
+.is-council-executive { --membership-bg: #fff0f0; --membership-color: #b1222b; --membership-accent: #d83440; --membership-border: #eea3a9; }
+.membership-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.membership-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--membership-border); border-radius: 6px; background: var(--membership-bg); color: var(--membership-color); font-size: 12px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.membership-tag::before { content: ''; width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--membership-accent); }
+#person-form .person-membership-option { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; cursor: pointer; }
+#person-form .person-membership-option input { display: block; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; padding: 0; accent-color: var(--membership-accent); cursor: pointer; }
 #person-photo-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 
 .person-detail-head { display: flex; align-items: center; gap: 15px; padding-right: 35px; }

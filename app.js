@@ -873,6 +873,14 @@ let personFormContext = null;
 let keepPersonPhotos = [];
 let pendingPersonPhoto = null;
 
+function membershipBadgesHtml(person) {
+  const tags = kmapPeople.membershipTagsFor(person);
+  if (!tags.length) return '';
+  return `<div class="membership-tags" aria-label="人物タグ">${tags.map((tag) => (
+    `<span class="membership-tag is-${tag.id}">${esc(tag.label)}</span>`
+  )).join('')}</div>`;
+}
+
 function personAvatarHtml(person, className = '') {
   const photo = person.photos?.[0];
   if (photo) return `<img class="person-avatar ${className}" data-photo="${esc(photo)}" alt="${esc(person.name)}の写真">`;
@@ -927,6 +935,7 @@ function openPersonDetail(person) {
       <div>
         <p class="privacy-badge">🔒 編集者のみ</p>
         <h2 id="person-detail-name">${esc(person.name)}</h2>
+        ${membershipBadgesHtml(person)}
         <p class="person-log-count">出来事 ${events.length}件・関連メモ／場所 ${logs.length}件</p>
       </div>
     </div>
@@ -1141,6 +1150,12 @@ function openPersonForm(existing = null) {
   document.getElementById('person-form-title').textContent = `人物を${existing ? '編集' : '追加'}`;
   personForm.elements.name.value = existing?.name || '';
   personForm.elements.description.value = existing?.description || '';
+  const selectedTags = kmapPeople.membershipTagsFor(existing || {}).map((tag) => tag.id);
+  document.getElementById('person-membership-options').innerHTML = kmapPeople.MEMBERSHIP_TAGS.map((tag) => `
+    <label class="person-membership-option is-${tag.id}">
+      <input type="checkbox" name="membershipTags" value="${tag.id}" ${selectedTags.includes(tag.id) ? 'checked' : ''}>
+      <span class="membership-tag is-${tag.id}">${esc(tag.label)}</span>
+    </label>`).join('');
   personForm.elements.photo.value = '';
   keepPersonPhotos = existing?.photos ? [...existing.photos] : [];
   pendingPersonPhoto = null;
@@ -1188,6 +1203,8 @@ personForm.addEventListener('submit', async (event) => {
     const body = {
       name,
       description: personForm.elements.description.value.trim(),
+      membershipTags: kmapPeople.updateMembershipTags(existing || {},
+        [...personForm.querySelectorAll('input[name="membershipTags"]:checked')].map((input) => input.value)),
       photos: pendingPersonPhoto
         ? [pendingPersonPhoto, ...keepPersonPhotos.filter((photo) => photo !== pendingPersonPhoto)]
         : [...keepPersonPhotos],
@@ -1237,7 +1254,7 @@ function filteredItems() {
       ? []
       : kmapPeople.resolveRecordPeople(it, state.people).map((tag) => tag.name);
     const hay = kind === 'people'
-      ? [it.name, it.description, ...kmapPeople.eventsForPerson(it)
+      ? [it.name, it.description, ...kmapPeople.membershipTagsFor(it).map((tag) => tag.label), ...kmapPeople.eventsForPerson(it)
         .flatMap((event) => [event.text, event.date, event.time, kmapPeople.eventDateLabel(event)])].join(' ').toLowerCase()
       : [it.title, it.text, ...(it.people || []), ...taggedNames].join(' ').toLowerCase();
     return hay.includes(q);
@@ -1288,6 +1305,7 @@ function renderPeopleList(list, people) {
           <span class="item-title">${esc(person.name)}</span>
           <span class="person-log-count">出来事 ${events.length}件</span>
         </div>
+        ${membershipBadgesHtml(person)}
         ${person.description ? `<div class="item-text">${esc(person.description)}</div>` : ''}
         <div class="item-meta">${events.length ? `${esc(kmapPeople.eventDateLabel(events[0]))}・${esc(events[0].text)}`
     : latest ? `関連: ${esc(logDate(latest.kind, latest.item))}・${esc(latest.item.title)}` : '出来事はまだありません'}</div>
@@ -1420,7 +1438,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
     state.activeTab = tab.dataset.tab;
     state.categoryFilter = null;
     document.getElementById('search').placeholder = state.activeTab === 'people'
-      ? '名簿を検索（名前・説明・出来事）'
+      ? '名簿を検索（名前・タグ・出来事など）'
       : '検索（タイトル・人・本文）';
     renderSidebar();
   };
@@ -1542,7 +1560,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=person-events-1').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=person-events-2').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 

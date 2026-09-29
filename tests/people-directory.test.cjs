@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   editableTags, buildTagData, resolveRecordPeople, logsForPerson,
+  membershipTagsFor, updateMembershipTags,
 } = require('../people-directory.js');
 
 const people = [
@@ -16,6 +17,33 @@ test('旧「会った人」の名前を名簿IDへ結び付け、未登録名を
     selectedIds: ['p1'],
     unmatchedNames: ['未登録さん'],
   });
+});
+
+test('membership tags are opt-in and independently selectable for legacy people', () => {
+  assert.deepEqual(membershipTagsFor(people[0]), []);
+  assert.deepEqual(updateMembershipTags(people[0], ['council-executive']), ['council-executive']);
+  const tags = updateMembershipTags(people[0], ['council-member', 'council-executive', 'council-member']);
+  assert.deepEqual(membershipTagsFor({ membershipTags: tags }).map((tag) => tag.label), [
+    '協議会メンバー', '協議会執行部メンバー',
+  ]);
+  assert.equal(people[0].membershipTags, undefined);
+});
+
+test('unchecking membership tags preserves events, photos, and unrelated tags', () => {
+  const { mergeItem } = require('../record-merge.js');
+  const person = {
+    id: 'p1', name: '田中さん', photos: ['face.jpg'],
+    events: [{ id: 'e1', date: '2026-09-29', time: '14:30', text: '訪問' }],
+    membershipTags: ['council-member', 'council-executive', 'future-tag'],
+  };
+  const removedOne = updateMembershipTags(person, ['council-member']);
+  assert.deepEqual(removedOne, ['future-tag', 'council-member']);
+  const saved = mergeItem(person, person, { membershipTags: updateMembershipTags(person, []) });
+  assert.deepEqual(saved.membershipTags, ['future-tag']);
+  assert.deepEqual(saved.events, person.events);
+  assert.deepEqual(saved.photos, person.photos);
+  assert.equal(saved.name, person.name);
+  assert.deepEqual(person.membershipTags, ['council-member', 'council-executive', 'future-tag']);
 });
 
 test('人物タグ保存時にIDと表示名を併記して検索互換性を保つ', () => {

@@ -11,7 +11,7 @@
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=person-events-1">
+  <link rel="stylesheet" href="style.css?v=person-events-2">
 </head>
 <body>
   <aside id="sidebar">
@@ -171,6 +171,10 @@
       <label>人物の名前 <span class="req">必須</span>
         <input name="name" required autocomplete="off">
       </label>
+      <fieldset id="person-membership">
+        <legend>人物タグ <span class="form-optional">複数選択可</span></legend>
+        <div id="person-membership-options"></div>
+      </fieldset>
       <label>人物説明
         <textarea name="description" rows="4" placeholder="どんな人か、所属、役割、関わりなど"></textarea>
       </label>
@@ -223,10 +227,10 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="record-merge.js?v=11"></script>
-  <script src="people-directory.js?v=2"></script>
+  <script src="people-directory.js?v=3"></script>
   <script src="pin-types.js?v=11"></script>
   <script src="image-utils.js?v=10"></script>
   <script src="storage.js?v=10"></script>
-  <script src="app.js?v=person-events-1"></script>
+  <script src="app.js?v=person-events-2"></script>
 </body>
 </html>

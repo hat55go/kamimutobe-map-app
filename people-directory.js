@@ -7,6 +7,25 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.kmapPeople = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+  const MEMBERSHIP_TAGS = Object.freeze([
+    Object.freeze({ id: 'council-member', label: '協議会メンバー' }),
+    Object.freeze({ id: 'council-executive', label: '協議会執行部メンバー' }),
+  ]);
+
+  function membershipTagsFor(person = {}) {
+    const selected = Array.isArray(person.membershipTags) ? person.membershipTags : [];
+    return MEMBERSHIP_TAGS.filter((tag) => selected.includes(tag.id));
+  }
+
+  function updateMembershipTags(person = {}, selected = []) {
+    const knownIds = new Set(MEMBERSHIP_TAGS.map((tag) => tag.id));
+    const previous = Array.isArray(person.membershipTags) ? person.membershipTags : [];
+    return [...new Set([
+      ...previous.filter((id) => !knownIds.has(id)),
+      ...MEMBERSHIP_TAGS.filter((tag) => selected.includes(tag.id)).map((tag) => tag.id),
+    ])];
+  }
+
   function normalizeName(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ja-JP');
   }
@@ -188,6 +207,9 @@
   }
 
   return {
+    MEMBERSHIP_TAGS,
+    membershipTagsFor,
+    updateMembershipTags,
     normalizeName,
     parseNames,
     activePeople,
