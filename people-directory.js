@@ -136,6 +136,57 @@
       .sort((a, b) => logSortKey(b.kind, b.item).localeCompare(logSortKey(a.kind, a.item)));
   }
 
+  // Occurrence dates are civil dates in Japan, independent of edit timestamps.
+  function eventFields(draft) {
+    const date = String(draft.date || '').trim();
+    const time = String(draft.time || '').trim();
+    const text = String(draft.text || '').trim();
+    const parsed = new Date(`${date}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith('0000')
+      || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+      throw new Error('出来事の日付を正しく入力してください。');
+    }
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      throw new Error('時刻は00:00〜23:59で入力してください。');
+    }
+    if (!text) throw new Error('出来事の内容を入力してください。');
+    return { date, time, text };
+  }
+
+  function upsertEvent(person, draft, timestamp = new Date().toISOString()) {
+    if (!draft.id) throw new Error('出来事のIDがありません。');
+    const fields = eventFields(draft);
+    const events = Array.isArray(person.events) ? person.events : [];
+    const existing = events.find((event) => event.id === draft.id);
+    const saved = {
+      ...existing, ...fields, id: draft.id,
+      createdAt: existing?.createdAt || timestamp, updatedAt: timestamp,
+    };
+    return existing
+      ? events.map((event) => event.id === draft.id ? saved : event)
+      : [...events, saved];
+  }
+
+  function eventsForPerson(person = {}) {
+    return [...(Array.isArray(person.events) ? person.events : [])].sort((a, b) => (
+      `${b.date}T${b.time || ''}`.localeCompare(`${a.date}T${a.time || ''}`)
+      || String(a.id).localeCompare(String(b.id))
+    ));
+  }
+
+  function eventDateLabel(event) {
+    const [year, month, day] = event.date.split('-').map(Number);
+    return `${year}年${month}月${day}日${event.time ? ` ${event.time}` : '（時刻未記録）'}`;
+  }
+
+  function japanDateTime(now = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(now).map(({ type, value }) => [type, value]));
+    return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+  }
+
   return {
     normalizeName,
     parseNames,
@@ -145,5 +196,10 @@
     resolveRecordPeople,
     recordMatchesPerson,
     logsForPerson,
+    eventFields,
+    upsertEvent,
+    eventsForPerson,
+    eventDateLabel,
+    japanDateTime,
   };
 }));

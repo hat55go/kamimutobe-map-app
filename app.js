@@ -866,6 +866,9 @@ const personDetailBackdrop = document.getElementById('person-detail-backdrop');
 const personDetailContent = document.getElementById('person-detail-content');
 const personFormBackdrop = document.getElementById('person-form-backdrop');
 const personForm = document.getElementById('person-form');
+const personEventBackdrop = document.getElementById('person-event-backdrop');
+const personEventForm = document.getElementById('person-event-form');
+let personEventContext = null;
 let personFormContext = null;
 let keepPersonPhotos = [];
 let pendingPersonPhoto = null;
@@ -900,6 +903,17 @@ function openRecordFromPersonLog(kind, item) {
 
 function openPersonDetail(person) {
   const logs = kmapPeople.logsForPerson(person, state.notes, state.spots);
+  const events = kmapPeople.eventsForPerson(person);
+  const eventsHtml = events.length
+    ? `<ol class="person-events">${events.map((event) => `
+      <li class="person-event">
+        <div class="person-event-head">
+          <time datetime="${esc(event.date)}${event.time ? `T${esc(event.time)}+09:00` : ''}">${esc(kmapPeople.eventDateLabel(event))}</time>
+          <button type="button" data-event-id="${esc(event.id)}" aria-label="${esc(kmapPeople.eventDateLabel(event))}の出来事を編集">編集</button>
+        </div>
+        <p>${esc(event.text)}</p>
+      </li>`).join('')}</ol>`
+    : '<p class="person-event-empty">会ったことや話したことを、日時と一緒に残せます。</p>';
   const recentHtml = logs.length
     ? logs.slice(0, 20).map(({ kind, item }) => `
       <button type="button" class="person-log" data-log-kind="${kind}" data-log-id="${esc(item.id)}">
@@ -913,17 +927,25 @@ function openPersonDetail(person) {
       <div>
         <p class="privacy-badge">🔒 編集者のみ</p>
         <h2 id="person-detail-name">${esc(person.name)}</h2>
-        <p class="person-log-count">関連ログ ${logs.length}件</p>
+        <p class="person-log-count">出来事 ${events.length}件・関連メモ／場所 ${logs.length}件</p>
       </div>
     </div>
+    <h3>人物説明</h3>
     ${person.description ? `<p class="person-description">${esc(person.description)}</p>` : '<p class="person-description is-empty">説明はまだありません。</p>'}
-    <h3>直近のログ</h3>
+    <div class="person-events-heading"><h3>出来事</h3><span>新しい順・日本時間</span></div>
+    <button type="button" class="person-event-add">＋ 出来事を記録</button>
+    ${eventsHtml}
+    <h3>関連するメモ・場所</h3>
     <div class="person-logs">${recentHtml}</div>
     <div class="person-detail-actions">
-      <button type="button" data-person-act="edit">✏️ 編集</button>
+      <button type="button" data-person-act="edit">人物情報を編集</button>
       ${person.archivedAt ? '' : '<button type="button" data-person-act="archive" class="danger">名簿から非表示</button>'}
     </div>`;
   resolvePhotos(personDetailContent);
+  personDetailContent.querySelector('.person-event-add').onclick = () => openPersonEvent(person);
+  personDetailContent.querySelectorAll('[data-event-id]').forEach((button) => {
+    button.onclick = () => openPersonEvent(person, events.find((event) => event.id === button.dataset.eventId));
+  });
   personDetailContent.querySelector('.person-avatar[src]')?.addEventListener('click', (event) => {
     if (event.currentTarget.src) window.open(event.currentTarget.src);
   });
@@ -955,7 +977,142 @@ function openPersonDetail(person) {
     };
   }
   personDetailBackdrop.classList.remove('hidden');
+  document.getElementById('person-detail').scrollTop = 0;
+  document.getElementById('person-detail-close').focus({ preventScroll: true });
 }
+
+function showSavedPerson(person) {
+  const index = state.people.findIndex((item) => item.id === person.id);
+  if (index < 0) state.people.push(person);
+  else state.people[index] = person;
+  renderSidebar();
+  openPersonDetail(person);
+}
+
+function personEventDraft() {
+  return {
+    id: personEventContext.id,
+    date: personEventForm.elements.date.value,
+    time: personEventForm.elements.time.value,
+    text: personEventForm.elements.text.value,
+  };
+}
+
+function openPersonEvent(person, existing = null) {
+  closePersonDetail();
+  personEventContext = { person, id: existing?.id || genId(), saving: false };
+  document.getElementById('person-event-title').textContent = existing ? '出来事を編集' : '出来事を記録';
+  document.getElementById('person-event-person').textContent = person.name;
+  personEventForm.elements.date.value = existing?.date || kmapPeople.japanDateTime().date;
+  personEventForm.elements.time.value = existing?.time || '';
+  personEventForm.elements.text.value = existing?.text || '';
+  personEventContext.initial = JSON.stringify(personEventDraft());
+  document.getElementById('person-event-status').textContent = '';
+  document.getElementById('person-event-status').classList.remove('ng');
+  document.getElementById('person-event-discard').classList.add('hidden');
+  personEventBackdrop.classList.remove('hidden');
+  personEventForm.scrollTop = 0;
+  personEventForm.elements.text.focus();
+}
+
+function closePersonEvent() {
+  if (!personEventContext || personEventContext.saving) return;
+  if (JSON.stringify(personEventDraft()) !== personEventContext.initial) {
+    document.getElementById('person-event-discard').classList.remove('hidden');
+    document.getElementById('person-event-continue').focus();
+    return;
+  }
+  discardPersonEvent();
+}
+
+function discardPersonEvent() {
+  if (!personEventContext || personEventContext.saving) return;
+  const person = personEventContext.person;
+  personEventBackdrop.classList.add('hidden');
+  personEventContext = null;
+  openPersonDetail(person);
+  personDetailContent.querySelector('.person-event-add').focus({ preventScroll: true });
+}
+
+document.getElementById('person-event-now').onclick = () => {
+  const now = kmapPeople.japanDateTime();
+  personEventForm.elements.date.value = now.date;
+  personEventForm.elements.time.value = now.time;
+};
+document.getElementById('person-event-cancel').onclick = closePersonEvent;
+document.getElementById('person-event-discard-confirm').onclick = discardPersonEvent;
+document.getElementById('person-event-continue').onclick = () => {
+  document.getElementById('person-event-discard').classList.add('hidden');
+  personEventForm.elements.text.focus();
+};
+personEventBackdrop.addEventListener('click', (event) => {
+  if (event.target === personEventBackdrop) closePersonEvent();
+});
+
+personEventForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const context = personEventContext;
+  if (!context || context.saving) return;
+  const status = document.getElementById('person-event-status');
+  const saveButton = document.getElementById('person-event-save');
+  try {
+    const draft = personEventDraft();
+    const signature = JSON.stringify(kmapPeople.eventFields(draft));
+    // Keep the exact candidate on retries after an uncertain network response.
+    if (signature !== context.signature) {
+      context.events = kmapPeople.upsertEvent(context.person, draft);
+      context.signature = signature;
+    }
+    context.saving = true;
+    document.getElementById('person-event-discard').classList.add('hidden');
+    document.getElementById('person-event-fields').disabled = true;
+    document.getElementById('person-event-cancel').disabled = true;
+    saveButton.disabled = true;
+    saveButton.textContent = '保存中…';
+    status.textContent = '出来事を保存しています…';
+    status.classList.remove('ng');
+    const saved = await api(`/api/people/${context.person.id}`, 'PUT', { events: context.events }, context.person);
+    personEventBackdrop.classList.add('hidden');
+    personEventContext = null;
+    showSavedPerson(saved);
+  } catch (err) {
+    const message = err.code === 'RECORD_CONFLICT'
+      ? '別の端末でこの人物の出来事が更新されました。入力内容を控えてから、画面を読み込み直して確認してください。'
+      : err.message;
+    status.textContent = `保存できませんでした。${message} 入力内容はこの画面に残っています。`;
+    status.classList.add('ng');
+  } finally {
+    context.saving = false;
+    document.getElementById('person-event-fields').disabled = false;
+    document.getElementById('person-event-cancel').disabled = false;
+    saveButton.disabled = false;
+    saveButton.textContent = '出来事を保存';
+  }
+});
+
+// Keep keyboard navigation inside the visible person dialog.
+document.addEventListener('keydown', (event) => {
+  const backdrop = [personEventBackdrop, personFormBackdrop, personDetailBackdrop]
+    .find((element) => !element.classList.contains('hidden'));
+  if (!backdrop) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    if (backdrop === personEventBackdrop) closePersonEvent();
+    else if (backdrop === personFormBackdrop) closePersonForm();
+    else closePersonDetail();
+  }
+  if (event.key !== 'Tab') return;
+  const controls = [...backdrop.querySelectorAll('button, input, textarea, [tabindex="0"]')]
+    .filter((element) => !element.matches(':disabled') && element.getClientRects().length);
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (!first) { event.preventDefault(); return; }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault(); last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault(); first.focus();
+  }
+});
 
 function setPersonPhotoStatus(message, isError = false) {
   const element = document.getElementById('person-photo-status');
@@ -994,6 +1151,7 @@ function openPersonForm(existing = null) {
 }
 
 function closePersonForm() {
+  if (document.getElementById('person-form-save').disabled) return;
   if (pendingPersonPhoto && !confirm(
     '写真は保存先へアップロード済みですが、名簿への反映が完了していません。編集を閉じますか？',
   )) return;
@@ -1035,11 +1193,13 @@ personForm.addEventListener('submit', async (event) => {
         : [...keepPersonPhotos],
     };
     if (!existing) body.id = draftId;
-    if (existing) await api(`/api/people/${existing.id}`, 'PUT', body, existing);
-    else await api('/api/people', 'POST', body);
+    const saved = existing
+      ? await api(`/api/people/${existing.id}`, 'PUT', body, existing)
+      : await api('/api/people', 'POST', body);
     pendingPersonPhoto = null;
-    closePersonForm();
-    await loadAll();
+    personFormBackdrop.classList.add('hidden');
+    personFormContext = null;
+    showSavedPerson(saved);
   } catch (err) {
     setPersonPhotoStatus(
       pendingPersonPhoto
@@ -1077,7 +1237,8 @@ function filteredItems() {
       ? []
       : kmapPeople.resolveRecordPeople(it, state.people).map((tag) => tag.name);
     const hay = kind === 'people'
-      ? [it.name, it.description].join(' ').toLowerCase()
+      ? [it.name, it.description, ...kmapPeople.eventsForPerson(it)
+        .flatMap((event) => [event.text, event.date, event.time, kmapPeople.eventDateLabel(event)])].join(' ').toLowerCase()
       : [it.title, it.text, ...(it.people || []), ...taggedNames].join(' ').toLowerCase();
     return hay.includes(q);
   });
@@ -1117,6 +1278,7 @@ function renderPeopleList(list, people) {
   for (const person of people) {
     const logs = kmapPeople.logsForPerson(person, state.notes, state.spots);
     const latest = logs[0];
+    const events = kmapPeople.eventsForPerson(person);
     const li = document.createElement('li');
     li.className = 'person-card';
     li.innerHTML = `
@@ -1124,10 +1286,11 @@ function renderPeopleList(list, people) {
       <div class="person-card-body">
         <div class="item-top">
           <span class="item-title">${esc(person.name)}</span>
-          <span class="person-log-count">${logs.length}件</span>
+          <span class="person-log-count">出来事 ${events.length}件</span>
         </div>
         ${person.description ? `<div class="item-text">${esc(person.description)}</div>` : ''}
-        <div class="item-meta">${latest ? `直近: ${esc(logDate(latest.kind, latest.item))}・${esc(latest.item.title)}` : '関連ログはまだありません'}</div>
+        <div class="item-meta">${events.length ? `${esc(kmapPeople.eventDateLabel(events[0]))}・${esc(events[0].text)}`
+    : latest ? `関連: ${esc(logDate(latest.kind, latest.item))}・${esc(latest.item.title)}` : '出来事はまだありません'}</div>
       </div>`;
     resolvePhotos(li);
     li.onclick = () => openPersonDetail(person);
@@ -1147,7 +1310,8 @@ function renderList() {
     li.textContent = kind === 'notes'
       ? 'まだ記録がありません。地図をクリックして最初の記録を残しましょう。'
       : kind === 'people'
-        ? '名簿はまだ空です。「＋ 人物を追加」から登録できます。'
+        ? state.query ? '該当する人物がいません。検索する言葉を変えてみてください。'
+          : '名簿はまだ空です。「＋ 人物を追加」から登録できます。'
         : '該当する場所がありません。';
     list.appendChild(li);
     return;
@@ -1256,7 +1420,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
     state.activeTab = tab.dataset.tab;
     state.categoryFilter = null;
     document.getElementById('search').placeholder = state.activeTab === 'people'
-      ? '名簿を検索（名前・説明）'
+      ? '名簿を検索（名前・説明・出来事）'
       : '検索（タイトル・人・本文）';
     renderSidebar();
   };
@@ -1378,7 +1542,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=16').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=person-events-1').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 

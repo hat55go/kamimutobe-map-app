@@ -11,7 +11,7 @@
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=person-events-1">
 </head>
 <body>
   <aside id="sidebar">
@@ -35,7 +35,7 @@
     <div id="filter-chips"></div>
     <div id="people-toolbar" class="hidden">
       <button type="button" id="person-add">＋ 人物を追加</button>
-      <p>名簿・顔写真・人物タグは公開ページには表示されません。</p>
+      <p>名簿・出来事・顔写真・人物タグは公開ページには表示されません。</p>
     </div>
 
     <ul id="item-list"></ul>
@@ -166,14 +166,15 @@
 
   <!-- 人物名簿の追加・編集 -->
   <div id="person-form-backdrop" class="entity-backdrop hidden">
-    <form id="person-form" class="entity-panel">
+    <form id="person-form" class="entity-panel" role="dialog" aria-modal="true" aria-labelledby="person-form-title">
       <h2 id="person-form-title">人物を追加</h2>
-      <label>名前 <span class="req">必須</span>
+      <label>人物の名前 <span class="req">必須</span>
         <input name="name" required autocomplete="off">
       </label>
-      <label>関連・説明
-        <textarea name="description" rows="5" placeholder="所属、役割、話した内容など"></textarea>
+      <label>人物説明
+        <textarea name="description" rows="4" placeholder="どんな人か、所属、役割、関わりなど"></textarea>
       </label>
+      <p class="form-help">出来事は、人物を保存した後に日時を付けて追加できます。</p>
       <label>顔写真（任意・非公開）
         <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif">
       </label>
@@ -186,12 +187,46 @@
     </form>
   </div>
 
+  <div id="person-event-backdrop" class="entity-backdrop hidden">
+    <form id="person-event-form" class="entity-panel" role="dialog" aria-modal="true" aria-labelledby="person-event-title">
+      <h2 id="person-event-title">出来事を記録</h2>
+      <p id="person-event-person" class="form-help"></p>
+      <fieldset id="person-event-fields">
+        <div class="person-event-datetime">
+          <label>日付 <span class="req">必須</span>
+            <input name="date" type="date" required min="0001-01-01" max="9999-12-31">
+          </label>
+          <label>時刻 <span class="form-optional">任意</span>
+            <input name="time" type="time" step="60" aria-describedby="person-event-time-help">
+          </label>
+        </div>
+        <div class="person-event-time-help">
+          <p id="person-event-time-help" class="form-help">日本時間。時刻が分からない場合は空欄にできます。</p>
+          <button type="button" id="person-event-now">現在日時を入れる</button>
+        </div>
+        <label>出来事 <span class="req">必須</span>
+          <textarea name="text" rows="5" required placeholder="例：地域の歴史についてお話を伺った"></textarea>
+        </label>
+      </fieldset>
+      <p id="person-event-status" class="form-help" role="status" aria-live="polite"></p>
+      <div id="person-event-discard" class="hidden" role="group" aria-label="未保存の出来事">
+        <p>入力中の出来事を保存せずに閉じますか？</p>
+        <button type="button" id="person-event-continue">編集を続ける</button>
+        <button type="button" id="person-event-discard-confirm">保存せずに閉じる</button>
+      </div>
+      <div class="form-buttons">
+        <button type="button" id="person-event-cancel">キャンセル</button>
+        <button type="submit" id="person-event-save">出来事を保存</button>
+      </div>
+    </form>
+  </div>
+
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="record-merge.js?v=11"></script>
-  <script src="people-directory.js?v=1"></script>
+  <script src="people-directory.js?v=2"></script>
   <script src="pin-types.js?v=11"></script>
   <script src="image-utils.js?v=10"></script>
   <script src="storage.js?v=10"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=person-events-1"></script>
 </body>
 </html>

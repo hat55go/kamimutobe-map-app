@@ -672,6 +672,45 @@ body {
 .person-detail-actions button { flex: 1; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; cursor: pointer; }
 .person-detail-actions .danger { border-color: #ffc9c9; color: #c92a2a; }
 
+/* Dated events are separate from profile text and linked map records. */
+#person-detail { width: 540px; }
+#person-detail-name, .person-description, #person-event-person { overflow-wrap: anywhere; }
+.person-description { margin-top: 8px; }
+.person-events-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.person-events-heading span { font-size: 11px; color: #6c757d; }
+.person-event-add { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid #1b4332; border-radius: 8px; background: #1b4332; color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.person-events { list-style: none; padding: 0 0 0 15px; margin: 18px 0 24px; border-left: 2px solid #d8e8df; }
+.person-event { position: relative; margin-bottom: 12px; padding: 0 0 14px; border-bottom: 1px solid #edf1ee; }
+.person-event::before { content: ''; position: absolute; left: -21px; top: 17px; width: 10px; height: 10px; border-radius: 50%; background: #2d6a4f; border: 2px solid #fff; }
+.person-event-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.person-event time { color: #28543f; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.person-event p { margin: 2px 0 0; color: #343a40; font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.person-event button, #person-event-now { flex: 0 0 auto; min-height: 44px; padding: 8px 12px; border: 1px solid #d8e8df; border-radius: 7px; background: #f4f8f5; color: #1b4332; font: inherit; font-size: 13px; cursor: pointer; }
+.person-event-empty { padding: 16px 0; color: #6c757d; font-size: 13px; line-height: 1.7; }
+#person-event-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+#person-event-form label { display: block; margin-bottom: 12px; color: #495057; font-size: 13px; }
+#person-event-form input, #person-event-form textarea { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 6px; padding: 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; font: inherit; font-size: 16px; }
+#person-event-form textarea { resize: vertical; line-height: 1.65; }
+.person-event-datetime { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+.person-event-time-help { margin-bottom: 18px; }
+#person-event-now { margin-top: 6px; }
+#person-event-form .req { font-size: 11px; color: #c92a2a; }
+.form-optional { font-size: 11px; color: #6c757d; }
+#person-event-status.ng { color: #c92a2a; }
+#person-event-person { margin: 6px 0 18px; font-size: 13px; }
+#person-event-discard { padding: 12px; margin-top: 12px; border: 1px solid #f0d9b0; border-radius: 8px; background: #fff9ee; font-size: 13px; }
+#person-event-discard.hidden { display: none; }
+#person-event-discard p { margin: 0 0 8px; }
+#person-event-discard button { min-height: 44px; margin: 4px 4px 0 0; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; cursor: pointer; }
+#person-event-form .form-buttons button, #person-form .form-buttons button, .person-detail-actions button, #person-detail-close { min-height: 44px; }
+#person-detail-close { width: 44px; }
+#person-event-save { border-color: #1b4332; background: #1b4332; color: #fff; }
+#person-event-form button:disabled { opacity: 0.55; cursor: wait; }
+.person-card .item-meta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+#person-detail .person-detail-head > div { min-width: 0; }
+#person-detail .person-log-count { white-space: normal; }
+.entity-panel :focus-visible { outline: 2px solid #2d6a4f; outline-offset: 3px; }
+
 /* ---- 保存先セットアップ ---- */
 #setup-backdrop {
   position: fixed;
@@ -876,6 +915,13 @@ body {
     border-radius: 18px 18px 0 0;
     padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
   }
+
+  #person-detail, #person-event-form, #person-form {
+    width: 100%;
+    max-height: 88dvh;
+    overscroll-behavior: contain;
+  }
+  #person-form input, #person-form textarea { font-size: 16px; }
 
   .floating-panel {
     top: 64px;
