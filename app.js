@@ -1428,7 +1428,7 @@ function filteredItems() {
       ? []
       : kmapPeople.resolveRecordPeople(it, state.people).map((tag) => tag.name);
     const hay = kind === 'people'
-      ? [it.name, it.description, ...kmapPeople.membershipTagsFor(it).map((tag) => tag.label), ...kmapPeople.eventsForPerson(it)
+      ? [it.name, it.description, ...kmapPeople.membershipTagsFor(it).flatMap((tag) => [tag.label, tag.mark]), ...kmapPeople.eventsForPerson(it)
         .flatMap((event) => [event.text, event.date, event.time, kmapPeople.eventDateLabel(event)])].join(' ').toLowerCase()
       : [it.title, it.text, ...(it.people || []), ...taggedNames, kind === 'spots' ? kmapSpotJournal.searchText(it) : ''].join(' ').toLowerCase();
     return hay.includes(q);
@@ -1738,7 +1738,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=membership-marks-1').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=membership-marks-2').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
