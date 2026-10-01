@@ -11,7 +11,7 @@
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=person-events-2">
+  <link rel="stylesheet" href="style.css?v=spot-journal-1">
 </head>
 <body>
   <aside id="sidebar">
@@ -120,6 +120,15 @@
       <label id="date-field">日付
         <input name="date" type="date">
       </label>
+      <fieldset id="spot-record-fields" class="hidden">
+        <legend>記録日時</legend>
+        <div class="journal-datetime">
+          <label>記録日<input name="recordedDate" type="date" min="0001-01-01" max="9999-12-31"></label>
+          <label>時刻 <span class="form-optional">任意</span><input name="recordedTime" type="time" step="60"></label>
+        </div>
+        <p class="form-help">日本時間。時刻は省略できます。既存の記録で日時が分からない場合は空欄にできます。</p>
+        <button type="button" id="spot-record-now">現在日時を入れる</button>
+      </fieldset>
       <label>カテゴリ
         <select name="category"></select>
       </label>
@@ -152,6 +161,40 @@
       <div class="form-buttons">
         <button type="button" id="form-cancel">キャンセル</button>
         <button type="submit" id="form-save">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="spot-detail-backdrop" class="entity-backdrop hidden">
+    <section id="spot-detail" class="entity-panel" role="dialog" aria-modal="true" aria-labelledby="spot-detail-title">
+      <button type="button" id="spot-detail-close" class="entity-close" aria-label="閉じる">×</button>
+      <div id="spot-detail-content"></div>
+    </section>
+  </div>
+
+  <div id="spot-addition-backdrop" class="entity-backdrop hidden">
+    <form id="spot-addition-form" class="entity-panel journal-form" role="dialog" aria-modal="true" aria-labelledby="spot-addition-title">
+      <h2 id="spot-addition-title">場所に追記</h2>
+      <p id="spot-addition-place" class="form-help"></p>
+      <fieldset id="spot-addition-fields">
+        <div class="journal-datetime">
+          <label>追記日 <span class="req">必須</span><input name="date" type="date" required min="0001-01-01" max="9999-12-31"></label>
+          <label>時刻 <span class="form-optional">任意</span><input name="time" type="time" step="60"></label>
+        </div>
+        <p class="form-help">日本時間。時刻が分からない場合は空欄にできます。</p>
+        <button type="button" id="spot-addition-now">現在日時を入れる</button>
+        <label>追記の内容 <span class="req">必須</span><textarea name="text" rows="5" required placeholder="例：再訪した際に、参道の整備が進んでいるのを確認した"></textarea></label>
+      </fieldset>
+      <p class="form-help">追記は編集画面に表示されます。元の説明や写真はそのまま残ります。</p>
+      <p id="spot-addition-status" class="form-help" role="status" aria-live="polite"></p>
+      <div id="spot-addition-discard" class="journal-discard hidden" role="group" aria-label="未保存の追記">
+        <p>入力中の追記を保存せずに閉じますか？</p>
+        <button type="button" id="spot-addition-continue">編集を続ける</button>
+        <button type="button" id="spot-addition-discard-confirm">保存せずに閉じる</button>
+      </div>
+      <div class="form-buttons">
+        <button type="button" id="spot-addition-cancel">キャンセル</button>
+        <button type="submit" id="spot-addition-save">追記を保存</button>
       </div>
     </form>
   </div>
@@ -228,9 +271,10 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="record-merge.js?v=11"></script>
   <script src="people-directory.js?v=3"></script>
+  <script src="spot-journal.js?v=1"></script>
   <script src="pin-types.js?v=11"></script>
   <script src="image-utils.js?v=10"></script>
   <script src="storage.js?v=10"></script>
-  <script src="app.js?v=person-events-2"></script>
+  <script src="app.js?v=spot-journal-1"></script>
 </body>
 </html>

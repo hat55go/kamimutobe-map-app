@@ -557,16 +557,41 @@ function bindPersonTagButtons(root) {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       const person = state.people.find((candidate) => String(candidate.id) === button.dataset.personId);
-      if (person) openPersonDetail(person);
+      if (person) { closeSpotDetail(); openPersonDetail(person); }
     });
   });
 }
 
 // ---- 詳細ポップアップ ----
 let activePopup = null;
+const spotDetailBackdrop = document.getElementById('spot-detail-backdrop');
+function closeSpotDetail() { spotDetailBackdrop.classList.add('hidden'); }
+document.getElementById('spot-detail-close').onclick = closeSpotDetail;
+spotDetailBackdrop.addEventListener('click', (event) => {
+  if (event.target === spotDetailBackdrop) closeSpotDetail();
+});
+function closeRecordDetail() {
+  if (activePopup) activePopup.remove();
+  closeSpotDetail();
+}
+
+function spotJournalHtml(spot) {
+  const entries = kmapSpotJournal.additionsFor(spot);
+  return `<section class="spot-journal">
+    <div class="journal-heading"><h3>追記</h3><span>新しい順・日本時間</span></div>
+    <button type="button" class="journal-add" data-act="add-entry">＋ 日付を付けて追記</button>
+    ${entries.length ? `<ol class="journal-entries">${entries.map((entry) => `
+      <li class="journal-entry">
+        <div class="journal-entry-head">
+          <time datetime="${esc(entry.date)}${entry.time ? `T${esc(entry.time)}+09:00` : ''}">${esc(kmapSpotJournal.additionLabel(entry))}</time>
+          <button type="button" data-addition-id="${esc(entry.id)}" aria-label="${esc(kmapSpotJournal.additionLabel(entry))}を編集">編集</button>
+        </div><p>${esc(entry.text)}</p>
+      </li>`).join('')}</ol>` : '<p class="form-help">再訪したことや新しく分かったことを、日付と一緒に残せます。</p>'}
+  </section>`;
+}
 
 function openDetail(kind, item) {
-  if (activePopup) activePopup.remove();
+  closeRecordDetail();
   const pinType = kmapPinTypes.typeFor(kind, item.category);
   const div = document.createElement('div');
   const peopleHtml = peopleTagsHtml(item);
@@ -577,13 +602,14 @@ function openDetail(kind, item) {
   const photosHtml = item.photos?.length
     ? `<div class="popup-photos">${item.photos.map((f) => `<img data-photo="${esc(f)}" alt="">`).join('')}</div>` : '';
   div.innerHTML = `
-    <p class="popup-title">${esc(item.title)}</p>
+    ${kind === 'spots' ? `<h2 id="spot-detail-title">${esc(item.title)}</h2>` : `<p class="popup-title">${esc(item.title)}</p>`}
     <span class="popup-cat" style="background:${pinType.color}">${pinType.icon} ${esc(pinType.label)}</span>
     ${publicationHtml}
-    ${dateHtml}${peopleHtml}
+    ${dateHtml}${kind === 'spots' ? `<p class="spot-recorded-date">記録日時：${esc(kmapSpotJournal.dateLabel(kmapSpotJournal.recordedFields(item)))}</p>` : ''}${peopleHtml}
     ${photosHtml}
     ${item.text ? `<p class="popup-text">${esc(item.text)}</p>` : ''}
     ${item.source ? `<p class="popup-meta">📎 ${esc(item.source)}</p>` : ''}
+    ${kind === 'spots' ? spotJournalHtml(item) : ''}
     <div class="popup-actions">
       <button data-act="edit">✏️ 編集</button>
       <button data-act="move">📍 移動</button>
@@ -595,11 +621,11 @@ function openDetail(kind, item) {
     img.onclick = () => img.src && window.open(img.src); // クリックで原寸表示
   });
   div.querySelector('[data-act="edit"]').onclick = () => {
-    activePopup.remove();
+    closeRecordDetail();
     openForm(kind, { lat: item.lat, lng: item.lng }, item);
   };
   div.querySelector('[data-act="move"]').onclick = () => {
-    activePopup.remove();
+    closeRecordDetail();
     startMove(kind, item);
   };
   div.querySelector('[data-act="delete"]').onclick = async () => {
@@ -608,12 +634,24 @@ function openDetail(kind, item) {
     )) return;
     try {
       await api(`/api/${kind}/${item.id}`, 'DELETE', null, item);
-      activePopup.remove();
+      closeRecordDetail();
       await loadAll();
     } catch (err) {
       alert(`非表示にできませんでした: ${err.message}`);
     }
   };
+  if (kind === 'spots') {
+    div.querySelector('[data-act="add-entry"]').onclick = () => openSpotAddition(item);
+    div.querySelectorAll('[data-addition-id]').forEach((button) => {
+      button.onclick = () => openSpotAddition(item,
+        kmapSpotJournal.additionsFor(item).find((entry) => entry.id === button.dataset.additionId));
+    });
+    document.getElementById('spot-detail-content').replaceChildren(div);
+    spotDetailBackdrop.classList.remove('hidden');
+    document.getElementById('spot-detail').scrollTop = 0;
+    document.getElementById('spot-detail-close').focus({ preventScroll: true });
+    return;
+  }
   activePopup = new maplibregl.Popup({ offset: 18, maxWidth: '300px' })
     .setLngLat([item.lng, item.lat])
     .setDOMContent(div)
@@ -757,6 +795,13 @@ function openForm(kind, latlng, existing = null, initialCategory = null) {
 
   const isNote = kind === 'notes';
   document.getElementById('date-field').style.display = isNote ? '' : 'none';
+  document.getElementById('spot-record-fields').classList.toggle('hidden', isNote);
+  form.elements.recordedDate.disabled = isNote;
+  form.elements.recordedTime.disabled = isNote;
+  form.elements.recordedDate.required = !isNote && !existing;
+  const recorded = existing ? kmapSpotJournal.recordedFields(existing) : kmapPeople.japanDateTime();
+  form.elements.recordedDate.value = recorded.date;
+  form.elements.recordedTime.value = recorded.time;
   document.getElementById('people-field').style.display = '';
 
   form.elements.title.value = existing?.title || '';
@@ -797,6 +842,11 @@ function closeForm() {
   formContext = null;
 }
 
+document.getElementById('spot-record-now').onclick = () => {
+  const now = kmapPeople.japanDateTime();
+  form.elements.recordedDate.value = now.date;
+  form.elements.recordedTime.value = now.time;
+};
 document.getElementById('form-cancel').onclick = closeForm;
 backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeForm(); });
 
@@ -826,6 +876,11 @@ form.addEventListener('submit', async (e) => {
   const originalLabel = saveBtn.textContent;
   saveBtn.disabled = true;
   try {
+    if (kind === 'spots') {
+      const recorded = kmapSpotJournal.dateTimeFields(form.elements.recordedDate.value, form.elements.recordedTime.value, !existing);
+      body.recordedDate = recorded.date;
+      body.recordedTime = recorded.time;
+    }
     const files = [...form.elements.photos.files];
     for (const [i, f] of files.entries()) {
       const key = fileKey(f, i);
@@ -842,11 +897,13 @@ form.addEventListener('submit', async (e) => {
     body.photos = [...keepPhotos, ...uploaded];
     body.source = form.elements.source.value.trim();
     if (uploaded.length) setPhotoStatus('写真は保存済みです。記録へ反映しています…');
-    if (existing) await api(`/api/${kind}/${existing.id}`, 'PUT', body, existing);
-    else await api(`/api/${kind}`, 'POST', body);
+    const saved = existing
+      ? await api(`/api/${kind}/${existing.id}`, 'PUT', body, existing)
+      : await api(`/api/${kind}`, 'POST', body);
     pendingPhotoUploads.clear();
     closeForm();
     await loadAll();
+    if (kind === 'spots') openDetail(kind, saved);
   } catch (err) {
     setPhotoStatus(
       pendingPhotoUploads.size
@@ -858,6 +915,117 @@ form.addEventListener('submit', async (e) => {
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = originalLabel;
+  }
+});
+
+// ---- Dated additions to a place ----
+const spotAdditionBackdrop = document.getElementById('spot-addition-backdrop');
+const spotAdditionForm = document.getElementById('spot-addition-form');
+let spotAdditionContext = null;
+
+function spotAdditionDraft() {
+  return {
+    id: spotAdditionContext.id,
+    date: spotAdditionForm.elements.date.value,
+    time: spotAdditionForm.elements.time.value,
+    text: spotAdditionForm.elements.text.value,
+  };
+}
+
+function openSpotAddition(spot, existing = null) {
+  closeSpotDetail();
+  spotAdditionContext = { spot, id: existing?.id || genId(), saving: false };
+  document.getElementById('spot-addition-title').textContent = existing ? '追記を編集' : '場所に追記';
+  document.getElementById('spot-addition-place').textContent = spot.title;
+  const now = kmapPeople.japanDateTime();
+  spotAdditionForm.elements.date.value = existing ? existing.date : now.date;
+  spotAdditionForm.elements.time.value = existing ? existing.time || '' : now.time;
+  spotAdditionForm.elements.text.value = existing?.text || '';
+  spotAdditionContext.initial = JSON.stringify(spotAdditionDraft());
+  document.getElementById('spot-addition-status').textContent = '';
+  document.getElementById('spot-addition-status').classList.remove('ng');
+  document.getElementById('spot-addition-discard').classList.add('hidden');
+  spotAdditionBackdrop.classList.remove('hidden');
+  spotAdditionForm.scrollTop = 0;
+  spotAdditionForm.elements.text.focus();
+}
+
+function closeSpotAddition() {
+  if (!spotAdditionContext || spotAdditionContext.saving) return;
+  if (JSON.stringify(spotAdditionDraft()) !== spotAdditionContext.initial) {
+    document.getElementById('spot-addition-discard').classList.remove('hidden');
+    document.getElementById('spot-addition-continue').focus();
+    return;
+  }
+  discardSpotAddition();
+}
+
+function discardSpotAddition() {
+  if (!spotAdditionContext || spotAdditionContext.saving) return;
+  const spot = spotAdditionContext.spot;
+  spotAdditionBackdrop.classList.add('hidden');
+  spotAdditionContext = null;
+  openDetail('spots', spot);
+  document.querySelector('#spot-detail .journal-add').focus({ preventScroll: true });
+}
+
+document.getElementById('spot-addition-now').onclick = () => {
+  const now = kmapPeople.japanDateTime();
+  spotAdditionForm.elements.date.value = now.date;
+  spotAdditionForm.elements.time.value = now.time;
+};
+document.getElementById('spot-addition-cancel').onclick = closeSpotAddition;
+document.getElementById('spot-addition-discard-confirm').onclick = discardSpotAddition;
+document.getElementById('spot-addition-continue').onclick = () => {
+  document.getElementById('spot-addition-discard').classList.add('hidden');
+  spotAdditionForm.elements.text.focus();
+};
+spotAdditionBackdrop.addEventListener('click', (event) => {
+  if (event.target === spotAdditionBackdrop) closeSpotAddition();
+});
+
+spotAdditionForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const context = spotAdditionContext;
+  if (!context || context.saving) return;
+  const status = document.getElementById('spot-addition-status');
+  const saveButton = document.getElementById('spot-addition-save');
+  try {
+    const draft = spotAdditionDraft();
+    const signature = JSON.stringify(kmapSpotJournal.additionFields(draft));
+    // Reuse the same IDs and payload after an uncertain save response.
+    if (signature !== context.signature) {
+      context.additions = kmapSpotJournal.upsertAddition(context.spot, draft);
+      context.signature = signature;
+    }
+    context.saving = true;
+    document.getElementById('spot-addition-discard').classList.add('hidden');
+    document.getElementById('spot-addition-fields').disabled = true;
+    document.getElementById('spot-addition-cancel').disabled = true;
+    saveButton.disabled = true;
+    saveButton.textContent = '保存中…';
+    status.textContent = '追記を保存しています…';
+    status.classList.remove('ng');
+    const saved = await api(`/api/spots/${context.spot.id}`, 'PUT', { additions: context.additions }, context.spot);
+    const index = state.spots.findIndex((item) => item.id === saved.id);
+    state.spots[index] = saved;
+    spotAdditionBackdrop.classList.add('hidden');
+    spotAdditionContext = null;
+    renderSidebar();
+    renderMarkers();
+    openDetail('spots', saved);
+  } catch (err) {
+    const message = err.code === 'RECORD_CONFLICT'
+      ? '別の端末でこの場所の追記が更新されました。入力内容を控えてから、画面を読み込み直して確認してください。'
+      : err.message;
+    status.textContent = `保存できませんでした。${message} 入力内容はこの画面に残っています。`;
+    status.classList.add('ng');
+  } finally {
+    context.saving = false;
+    document.getElementById('spot-addition-fields').disabled = false;
+    document.getElementById('spot-addition-cancel').disabled = false;
+    saveButton.disabled = false;
+    saveButton.textContent = '追記を保存';
   }
 });
 
@@ -1099,14 +1267,16 @@ personEventForm.addEventListener('submit', async (event) => {
   }
 });
 
-// Keep keyboard navigation inside the visible person dialog.
+// Keep keyboard navigation inside the visible entity dialog.
 document.addEventListener('keydown', (event) => {
-  const backdrop = [personEventBackdrop, personFormBackdrop, personDetailBackdrop]
+  const backdrop = [spotAdditionBackdrop, spotDetailBackdrop, personEventBackdrop, personFormBackdrop, personDetailBackdrop]
     .find((element) => !element.classList.contains('hidden'));
   if (!backdrop) return;
   if (event.key === 'Escape') {
     event.preventDefault();
-    if (backdrop === personEventBackdrop) closePersonEvent();
+    if (backdrop === spotAdditionBackdrop) closeSpotAddition();
+    else if (backdrop === spotDetailBackdrop) closeSpotDetail();
+    else if (backdrop === personEventBackdrop) closePersonEvent();
     else if (backdrop === personFormBackdrop) closePersonForm();
     else closePersonDetail();
   }
@@ -1256,7 +1426,7 @@ function filteredItems() {
     const hay = kind === 'people'
       ? [it.name, it.description, ...kmapPeople.membershipTagsFor(it).map((tag) => tag.label), ...kmapPeople.eventsForPerson(it)
         .flatMap((event) => [event.text, event.date, event.time, kmapPeople.eventDateLabel(event)])].join(' ').toLowerCase()
-      : [it.title, it.text, ...(it.people || []), ...taggedNames].join(' ').toLowerCase();
+      : [it.title, it.text, ...(it.people || []), ...taggedNames, kind === 'spots' ? kmapSpotJournal.searchText(it) : ''].join(' ').toLowerCase();
     return hay.includes(q);
   });
   if (kind === 'notes') {
@@ -1343,7 +1513,8 @@ function renderList() {
     const li = document.createElement('li');
     const meta = kind === 'notes'
       ? [item.date]
-      : [`${pinType.icon} ${pinType.label}`];
+      : [`${pinType.icon} ${pinType.label}`, `記録 ${kmapSpotJournal.dateLabel(kmapSpotJournal.recordedFields(item))}`];
+    const additions = kind === 'spots' ? kmapSpotJournal.additionsFor(item) : [];
     li.innerHTML = `
       <div class="item-top">
         <span class="pin-symbol" aria-hidden="true">${pinType.icon}</span>
@@ -1352,7 +1523,8 @@ function renderList() {
       </div>
       <div class="item-meta">${esc(meta.filter(Boolean).join(' ／ '))}</div>
       ${peopleTagsHtml(item)}
-      ${item.text ? `<div class="item-text">${esc(item.text)}</div>` : ''}`;
+      ${item.text ? `<div class="item-text">${esc(item.text)}</div>` : ''}
+      ${additions.length ? `<div class="spot-addition-summary">${esc(kmapSpotJournal.additionLabel(additions[0]))} · ${additions.length}件</div>` : ''}`;
     bindPersonTagButtons(li);
     li.onclick = () => {
       focusMapOnItem(kind, item);
@@ -1560,7 +1732,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=person-events-2').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=spot-journal-1').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 
