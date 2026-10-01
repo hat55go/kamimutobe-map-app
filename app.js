@@ -1041,12 +1041,16 @@ let personFormContext = null;
 let keepPersonPhotos = [];
 let pendingPersonPhoto = null;
 
-function membershipBadgesHtml(person) {
+function membershipBadgeHtml(tag, compact = false) {
+  return `<span class="membership-tag is-${tag.id}${compact ? ' is-compact' : ''}" title="${esc(tag.label)}"${compact ? ` role="img" aria-label="${esc(tag.label)}"` : ''}>
+    <span class="membership-mark" aria-hidden="true">${esc(tag.mark)}</span>${compact ? '' : `<span>${esc(tag.label)}</span>`}
+  </span>`;
+}
+
+function membershipBadgesHtml(person, compact = false) {
   const tags = kmapPeople.membershipTagsFor(person);
   if (!tags.length) return '';
-  return `<div class="membership-tags" aria-label="人物タグ">${tags.map((tag) => (
-    `<span class="membership-tag is-${tag.id}">${esc(tag.label)}</span>`
-  )).join('')}</div>`;
+  return `<div class="membership-tags${compact ? ' is-compact' : ''}" aria-label="人物タグ">${tags.map((tag) => membershipBadgeHtml(tag, compact)).join('')}</div>`;
 }
 
 function personAvatarHtml(person, className = '') {
@@ -1324,7 +1328,7 @@ function openPersonForm(existing = null) {
   document.getElementById('person-membership-options').innerHTML = kmapPeople.MEMBERSHIP_TAGS.map((tag) => `
     <label class="person-membership-option is-${tag.id}">
       <input type="checkbox" name="membershipTags" value="${tag.id}" ${selectedTags.includes(tag.id) ? 'checked' : ''}>
-      <span class="membership-tag is-${tag.id}">${esc(tag.label)}</span>
+      ${membershipBadgeHtml(tag)}
     </label>`).join('');
   personForm.elements.photo.value = '';
   keepPersonPhotos = existing?.photos ? [...existing.photos] : [];
@@ -1472,10 +1476,12 @@ function renderPeopleList(list, people) {
       ${personAvatarHtml(person)}
       <div class="person-card-body">
         <div class="item-top">
-          <span class="item-title">${esc(person.name)}</span>
+          <div class="person-name-line">
+            <span class="item-title">${esc(person.name)}</span>
+            ${membershipBadgesHtml(person, true)}
+          </div>
           <span class="person-log-count">出来事 ${events.length}件</span>
         </div>
-        ${membershipBadgesHtml(person)}
         ${person.description ? `<div class="item-text">${esc(person.description)}</div>` : ''}
         <div class="item-meta">${events.length ? `${esc(kmapPeople.eventDateLabel(events[0]))}・${esc(events[0].text)}`
     : latest ? `関連: ${esc(logDate(latest.kind, latest.item))}・${esc(latest.item.title)}` : '出来事はまだありません'}</div>
@@ -1732,7 +1738,7 @@ map.addControl(new SettingsControl());
 // ---- 起動 ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=spot-journal-1').catch(() => { /* 未対応環境では黙って諦める */ });
+    navigator.serviceWorker.register('./sw.js?v=membership-marks-1').catch(() => { /* 未対応環境では黙って諦める */ });
   });
 }
 

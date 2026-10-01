@@ -8,8 +8,8 @@
   if (root) root.kmapPeople = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   const MEMBERSHIP_TAGS = Object.freeze([
-    Object.freeze({ id: 'council-member', label: '協議会メンバー' }),
-    Object.freeze({ id: 'council-executive', label: '協議会執行部メンバー' }),
+    Object.freeze({ id: 'council-member', label: '協議会メンバー', mark: '協' }),
+    Object.freeze({ id: 'council-executive', label: '協議会執行部メンバー', mark: '執' }),
   ]);
 
   function membershipTagsFor(person = {}) {
