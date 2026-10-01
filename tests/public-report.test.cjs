@@ -98,6 +98,8 @@ test('公開データの件数が一致し、非公開フィールドを含ま�
   for (const item of [...notes, ...spots]) {
     assert.equal('people' in item, false);
     assert.equal('peopleIds' in item, false);
+    assert.equal('events' in item, false);
+    assert.equal('membershipTags' in item, false);
     assert.equal('visibility' in item, false);
     assert.equal('archivedAt' in item, false);
   }

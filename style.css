@@ -602,7 +602,9 @@ body {
 }
 
 .person-card-body { min-width: 0; flex: 1; }
-.person-card .person-log-count { margin-left: auto; }
+.person-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.person-name-line .item-title { overflow-wrap: anywhere; }
+.person-card .person-log-count { margin-left: auto; flex-shrink: 0; }
 
 .person-avatar {
   width: 48px;
@@ -656,6 +658,17 @@ body {
 #person-form input, #person-form textarea { display: block; width: 100%; margin-top: 4px; padding: 8px 9px; border: 1px solid #ced4da; border-radius: 6px; font: inherit; font-size: 14px; }
 #person-form .req { color: #c92a2a; font-size: 11px; }
 #person-form-save { border-color: #1b4332; background: #1b4332; color: #fff; }
+#person-membership { min-width: 0; margin: 0 0 16px; padding: 10px; border: 1px solid #e1e5e2; border-radius: 8px; }
+#person-membership legend { padding: 0 5px; color: #495057; font-size: 13px; }
+.is-council-member { --membership-bg: #fff1dd; --membership-color: #9a4300; --membership-accent: #df7300; --membership-border: #edb77c; }
+.is-council-executive { --membership-bg: #fff0f0; --membership-color: #b1222b; --membership-accent: #d83440; --membership-border: #eea3a9; }
+.membership-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.membership-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--membership-border); border-radius: 6px; background: var(--membership-bg); color: var(--membership-color); font-size: 12px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.membership-mark { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex: 0 0 26px; border: 1px solid var(--membership-accent); border-radius: 6px; background: var(--membership-bg); color: var(--membership-color); font-size: 14px; font-weight: 800; line-height: 1; }
+.membership-tags.is-compact { flex-wrap: nowrap; flex-shrink: 0; margin: 0; }
+.membership-tag.is-compact { padding: 0; border: 0; background: transparent; }
+#person-form .person-membership-option { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; cursor: pointer; }
+#person-form .person-membership-option input { display: block; width: 20px; height: 20px; flex: 0 0 20px; margin: 0; padding: 0; accent-color: var(--membership-accent); cursor: pointer; }
 #person-photo-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 
 .person-detail-head { display: flex; align-items: center; gap: 15px; padding-right: 35px; }
@@ -671,6 +684,45 @@ body {
 .person-detail-actions { display: flex; gap: 8px; margin-top: 18px; }
 .person-detail-actions button { flex: 1; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; cursor: pointer; }
 .person-detail-actions .danger { border-color: #ffc9c9; color: #c92a2a; }
+
+/* Dated events are separate from profile text and linked map records. */
+#person-detail { width: 540px; }
+#person-detail-name, .person-description, #person-event-person { overflow-wrap: anywhere; }
+.person-description { margin-top: 8px; }
+.person-events-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.person-events-heading span { font-size: 11px; color: #6c757d; }
+.person-event-add { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid #1b4332; border-radius: 8px; background: #1b4332; color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.person-events { list-style: none; padding: 0 0 0 15px; margin: 18px 0 24px; border-left: 2px solid #d8e8df; }
+.person-event { position: relative; margin-bottom: 12px; padding: 0 0 14px; border-bottom: 1px solid #edf1ee; }
+.person-event::before { content: ''; position: absolute; left: -21px; top: 17px; width: 10px; height: 10px; border-radius: 50%; background: #2d6a4f; border: 2px solid #fff; }
+.person-event-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.person-event time { color: #28543f; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.person-event p { margin: 2px 0 0; color: #343a40; font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.person-event button, #person-event-now { flex: 0 0 auto; min-height: 44px; padding: 8px 12px; border: 1px solid #d8e8df; border-radius: 7px; background: #f4f8f5; color: #1b4332; font: inherit; font-size: 13px; cursor: pointer; }
+.person-event-empty { padding: 16px 0; color: #6c757d; font-size: 13px; line-height: 1.7; }
+#person-event-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+#person-event-form label { display: block; margin-bottom: 12px; color: #495057; font-size: 13px; }
+#person-event-form input, #person-event-form textarea { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 6px; padding: 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; font: inherit; font-size: 16px; }
+#person-event-form textarea { resize: vertical; line-height: 1.65; }
+.person-event-datetime { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+.person-event-time-help { margin-bottom: 18px; }
+#person-event-now { margin-top: 6px; }
+#person-event-form .req { font-size: 11px; color: #c92a2a; }
+.form-optional { font-size: 11px; color: #6c757d; }
+#person-event-status.ng { color: #c92a2a; }
+#person-event-person { margin: 6px 0 18px; font-size: 13px; }
+#person-event-discard { padding: 12px; margin-top: 12px; border: 1px solid #f0d9b0; border-radius: 8px; background: #fff9ee; font-size: 13px; }
+#person-event-discard.hidden { display: none; }
+#person-event-discard p { margin: 0 0 8px; }
+#person-event-discard button { min-height: 44px; margin: 4px 4px 0 0; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; cursor: pointer; }
+#person-event-form .form-buttons button, #person-form .form-buttons button, .person-detail-actions button, #person-detail-close { min-height: 44px; }
+#person-detail-close { width: 44px; }
+#person-event-save { border-color: #1b4332; background: #1b4332; color: #fff; }
+#person-event-form button:disabled { opacity: 0.55; cursor: wait; }
+.person-card .item-meta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+#person-detail .person-detail-head > div { min-width: 0; }
+#person-detail .person-log-count { white-space: normal; }
+.entity-panel :focus-visible { outline: 2px solid #2d6a4f; outline-offset: 3px; }
 
 /* ---- 保存先セットアップ ---- */
 #setup-backdrop {
@@ -877,6 +929,13 @@ body {
     padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
   }
 
+  #person-detail, #person-event-form, #person-form {
+    width: 100%;
+    max-height: 88dvh;
+    overscroll-behavior: contain;
+  }
+  #person-form input, #person-form textarea { font-size: 16px; }
+
   .floating-panel {
     top: 64px;
     left: 12px;
@@ -901,4 +960,49 @@ body {
     opacity: 1;
     transform: translateX(-50%) scale(1);
   }
+}
+
+/* Place journals retain the original description and dated additions. */
+#spot-detail { width: 560px; }
+#spot-detail-title { padding-right: 40px; margin-bottom: 12px; overflow-wrap: anywhere; }
+#spot-detail .popup-text { font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+#spot-detail .popup-actions { margin-top: 24px; flex-wrap: wrap; }
+#spot-detail .popup-actions button, #spot-detail-close { min-height: 44px; }
+#spot-detail-close { width: 44px; }
+.spot-recorded-date { color: #495c50; font-size: 13px; }
+.spot-addition-summary { margin-top: 7px; color: #2d6a4f; font-size: 12px; }
+.journal-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.journal-heading span { color: #6c757d; font-size: 11px; }
+.journal-add { width: 100%; padding: 10px 14px; }
+.journal-add, #spot-addition-save { border: 1px solid #1b4332; border-radius: 8px; background: #1b4332; color: #fff; }
+.journal-entries { list-style: none; padding: 0 0 0 16px; margin: 18px 0; border-left: 2px solid #d8e8df; }
+.journal-entry { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #edf1ee; }
+.journal-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.journal-entry time { color: #28543f; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.journal-entry p { margin: 4px 0 0; color: #343a40; font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.journal-entry button { flex: 0 0 auto; }
+.journal-entry button, #spot-record-now, #spot-addition-now, .journal-discard button { padding: 8px 12px; border: 1px solid #d8e8df; border-radius: 7px; background: #f4f8f5; color: #1b4332; }
+.journal-add, .journal-entry button, #spot-record-now, .journal-form button { min-height: 44px; font: inherit; font-size: 14px; cursor: pointer; }
+.journal-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.journal-form label { display: block; margin-bottom: 14px; color: #495057; font-size: 13px; }
+.journal-form input, .journal-form textarea, #spot-record-fields input { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 6px; padding: 10px; border: 1px solid #ced4da; border-radius: 7px; background: #fff; font: inherit; font-size: 16px; }
+.journal-form textarea { resize: vertical; line-height: 1.7; }
+.journal-form .req { color: #c92a2a; font-size: 11px; }
+.journal-datetime { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+#spot-addition-now { margin: 0 0 18px; }
+#spot-addition-place { margin: 8px 0 18px; overflow-wrap: anywhere; }
+#spot-addition-status.ng { color: #c92a2a; }
+#spot-record-fields { border: 1px solid #e1e5e2; padding: 12px; margin: 0 0 16px; min-width: 0; border-radius: 8px; }
+#spot-record-fields legend { color: #495057; font-size: 13px; }
+#spot-record-fields.hidden, .journal-discard.hidden { display: none; }
+.journal-discard { padding: 12px; margin-top: 12px; border: 1px solid #f0d9b0; border-radius: 8px; background: #fff9ee; font-size: 13px; }
+.journal-discard p { margin: 0 0 8px; }
+.journal-discard button { margin: 4px 4px 0 0; }
+.journal-form button:disabled { opacity: 0.55; cursor: wait; }
+@media (max-width: 700px) {
+  #spot-detail, #spot-addition-form { width: 100%; max-height: 88dvh; overscroll-behavior: contain; }
+  #item-form input, #item-form textarea, #item-form select { font-size: 16px; }
+}
+@media (max-width: 420px) {
+  .journal-datetime { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
